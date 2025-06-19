@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a2e">
+    <title>Iron DOM - Mobile Missile Defense</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preload" as="image" href="photos/bg.png">
+    <link rel="preload" as="image" href="photos/iran_rocket.png">
+    <link rel="preload" as="image" href="photos/iron_dom.png">
+    <link rel="preload" as="image" href="photos/israel_rocket.png">
+</head>
+<body>
+    <div class="game-container">
+        <div class="ui-overlay">
+            <div class="score-panel">
+                <div class="score">Score: <span id="score">0</span></div>
+                <div class="hits">Hits: <span id="hits">0</span>/5</div>
+                <div class="intercepts">Intercepts: <span id="intercepts">0</span>/20</div>
+            </div>
+            
+            <div class="game-message" id="gameMessage">
+                <h2>Iron DOM</h2>
+                <p id="gameInstructions">Tap anywhere on the screen to launch interceptor missiles!<br>Protect the cities by intercepting enemy missiles.<br><strong>Controls:</strong> Touch/Tap</p>
+                
+                <button id="startBtn" class="start-button">🎯 TAP TO START</button>
+            </div>
+            
+            <div class="controls">
+                <button id="pauseBtn" class="control-btn">⏸️</button>
+                <button id="restartBtn" class="control-btn">🔄</button>
+            </div>
+            
+            <!-- Touch feedback indicator -->
+            <div id="touchFeedback" class="touch-feedback"></div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Loading screen -->
+        <div class="loading-screen" id="loadingScreen">
+            <div class="loading-content">
+                <h2>🚀 Iron DOM</h2>
+                <div class="loading-spinner"></div>
+                <p>Loading assets...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html> 
