@@ -1066,7 +1066,7 @@ class IronDOMGame {
     }
     
     shareToWhatsApp() {
-        const message = `🎮 I just won Iron DOM! 🚀\n` +
+        const message = `🎮 I just won Iron Dome! 🚀\n` +
                        `🎯 Score: ${this.score}\n` +
                        `💥 Perfect Intercepts: ${this.intercepts}/20\n` +
                        `🏆 Successfully defended all cities!\n\n` +
