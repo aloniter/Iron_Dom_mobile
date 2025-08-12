@@ -1,11 +1,11 @@
 /* Iron Dome Service Worker */
 
-const CACHE_NAME = 'iron-dome-cache-v1';
+const CACHE_NAME = 'iron-dome-cache-v2';
 const PRECACHE_ASSETS = [
-  './',
   './index.html',
   './style.css',
   './game.js',
+  './manifest.webmanifest',
   // Images
   './photos/bg.png',
   './photos/iran_rocket.png',
@@ -18,9 +18,12 @@ const PRECACHE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  // Try to precache everything, but do not fail the whole install if one file fails
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const addPromises = PRECACHE_ASSETS.map((url) => cache.add(url).catch(() => null));
+      await Promise.allSettled(addPromises);
+    }).then(() => self.skipWaiting())
   );
 });
 
@@ -42,10 +45,10 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
 
   // Handle navigation requests by serving the cached app shell
-  if (request.mode === 'navigate' || (request.destination === 'document')) {
+  if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
-      caches.match('./index.html').then((cached) => {
-        return cached || fetch(request);
+      caches.match('./index.html', { ignoreSearch: true }).then((cached) => {
+        return cached || fetch(request).catch(() => caches.match('./index.html'));
       })
     );
     return;
@@ -57,9 +60,9 @@ self.addEventListener('fetch', (event) => {
     return; // Let the request pass through
   }
 
-  // Cache-first strategy for static assets
+  // Cache-first strategy for static assets (images, scripts, styles)
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
+    caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
@@ -74,7 +77,7 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // Optional: return a fallback image for image requests when offline
+          // Fallback for images when offline
           if (request.destination === 'image') {
             return caches.match('./photos/icon.png');
           }
