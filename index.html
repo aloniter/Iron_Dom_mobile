@@ -45,6 +45,15 @@
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.webmanifest">
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        // Register ASAP to precache assets
+        navigator.serviceWorker.register('./sw.js').catch(function (err) {
+          console.error('ServiceWorker registration failed:', err);
+        });
+      }
+    </script>
 </head>
 <body>
     <div class="game-container">
@@ -85,15 +94,5 @@
     </div>
     
     <script src="game.js"></script>
-
-    <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js').catch(function (err) {
-          console.error('ServiceWorker registration failed:', err);
-        });
-      });
-    }
-    </script>
 </body>
 </html> 
