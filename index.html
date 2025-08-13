@@ -6,6 +6,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Iron Dome">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no, address=no, email=no">
+    <meta name="full-screen" content="yes">
+    <meta name="x5-fullscreen" content="true">
     <meta name="theme-color" content="#0a0a2e">
     <meta name="description" content="Iron Dome - Mobile Missile Defense Game. Protect cities by intercepting enemy missiles with touch controls.">
     
@@ -49,7 +53,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         // Register ASAP to precache assets
-        navigator.serviceWorker.register('./sw.js').catch(function (err) {
+                 navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function (err) {
           console.error('ServiceWorker registration failed:', err);
         });
       }
