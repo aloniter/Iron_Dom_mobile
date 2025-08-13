@@ -1,11 +1,12 @@
 /* Iron Dome Service Worker */
 
-const CACHE_NAME = 'iron-dome-cache-v2';
+const CACHE_NAME = 'iron-dome-cache-v3';
 const PRECACHE_ASSETS = [
   './index.html',
   './style.css',
   './game.js',
   './manifest.webmanifest',
+  './',
   // Images
   './photos/bg.png',
   './photos/iran_rocket.png',
