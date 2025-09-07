@@ -1,0 +1,14 @@
+{
+  "name": "Iron Dome",
+  "short_name": "Iron Dome",
+  "description": "Protect cities by intercepting enemy missiles.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0a0a2e",
+  "theme_color": "#0a0a2e",
+  "icons": [
+    { "src": "photos/icon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "photos/icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
