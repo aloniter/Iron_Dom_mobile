@@ -50,7 +50,13 @@ class IronDomeGame {
             mid: { r: 22, g: 33, b: 62 },
             bottom: { r: 15, g: 52, b: 96 }
         };
-        
+
+        // Mobile/iOS performance settings
+        this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        this.maxSmokeParticles = this.isMobile ? 50 : 100;
+        this.maxSparks = this.isMobile ? 30 : 60;
+        this.maxDebris = this.isMobile ? 20 : 40;
+
         // Touch handling
         this.lastTouchTime = 0;
         this.touchCooldown = 150; // ms between touches
@@ -117,7 +123,7 @@ class IronDomeGame {
 
     generateClouds() {
         this.clouds = [];
-        const numClouds = 8;
+        const numClouds = this.isMobile ? 4 : 8; // Fewer clouds on mobile
         for (let i = 0; i < numClouds; i++) {
             this.clouds.push({
                 x: Math.random() * this.canvasWidth,
@@ -713,8 +719,8 @@ class IronDomeGame {
             interceptor.trail.push({ x: interceptor.x, y: interceptor.y });
             if (interceptor.trail.length > 6) interceptor.trail.shift();
 
-            // Create smoke trail
-            if (Math.random() < 0.6) {
+            // Create smoke trail (less frequent on mobile)
+            if (Math.random() < (this.isMobile ? 0.3 : 0.6)) {
                 this.createSmokeTrail(interceptor.x, interceptor.y, interceptor.vx, interceptor.vy, 'rgba(100, 200, 100, 0.5)');
             }
 
@@ -744,8 +750,8 @@ class IronDomeGame {
             missile.trail.push({ x: missile.x, y: missile.y });
             if (missile.trail.length > 8) missile.trail.shift();
 
-            // Create smoke trail for enemy missiles
-            if (Math.random() < 0.5) {
+            // Create smoke trail for enemy missiles (less frequent on mobile)
+            if (Math.random() < (this.isMobile ? 0.25 : 0.5)) {
                 this.createSmokeTrail(missile.x, missile.y, missile.vx, missile.vy, 'rgba(200, 100, 100, 0.4)');
             }
 
@@ -982,7 +988,8 @@ class IronDomeGame {
     }
 
     createDebris(x, y, color) {
-        const numDebris = 8;
+        if (this.debris.length > this.maxDebris) return; // Limit for iOS performance
+        const numDebris = this.isMobile ? 4 : 8;
         for (let i = 0; i < numDebris; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = Math.random() * 3 + 1;
@@ -1003,7 +1010,8 @@ class IronDomeGame {
     }
 
     createSparks(x, y, color) {
-        const numSparks = 12;
+        if (this.sparks.length > this.maxSparks) return; // Limit for iOS performance
+        const numSparks = this.isMobile ? 6 : 12;
         for (let i = 0; i < numSparks; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = Math.random() * 6 + 3;
@@ -1021,7 +1029,7 @@ class IronDomeGame {
     }
 
     createSmokeTrail(x, y, vx, vy, color) {
-        if (this.smokeParticles.length > 100) return; // Limit for performance
+        if (this.smokeParticles.length > this.maxSmokeParticles) return; // Limit for performance
 
         this.smokeParticles.push({
             x: x + (Math.random() - 0.5) * 5,
@@ -1324,20 +1332,30 @@ class IronDomeGame {
             this.ctx.globalAlpha = cloud.alpha;
             this.ctx.fillStyle = '#ffffff';
 
-            // Draw cloud as multiple overlapping ellipses
+            // Draw cloud as multiple overlapping circles (iOS compatible - no ellipse)
             const cx = cloud.x + cloud.width / 2;
             const cy = cloud.y + cloud.height / 2;
+            const baseRadius = Math.min(cloud.width, cloud.height) / 2;
 
+            // Main cloud body - multiple circles
             this.ctx.beginPath();
-            this.ctx.ellipse(cx, cy, cloud.width / 2, cloud.height / 2, 0, 0, Math.PI * 2);
+            this.ctx.arc(cx, cy, baseRadius, 0, Math.PI * 2);
             this.ctx.fill();
 
             this.ctx.beginPath();
-            this.ctx.ellipse(cx - cloud.width * 0.3, cy, cloud.width / 3, cloud.height / 2.5, 0, 0, Math.PI * 2);
+            this.ctx.arc(cx - baseRadius * 0.8, cy, baseRadius * 0.7, 0, Math.PI * 2);
             this.ctx.fill();
 
             this.ctx.beginPath();
-            this.ctx.ellipse(cx + cloud.width * 0.3, cy, cloud.width / 3, cloud.height / 2.5, 0, 0, Math.PI * 2);
+            this.ctx.arc(cx + baseRadius * 0.8, cy, baseRadius * 0.7, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.beginPath();
+            this.ctx.arc(cx - baseRadius * 0.4, cy - baseRadius * 0.3, baseRadius * 0.5, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.beginPath();
+            this.ctx.arc(cx + baseRadius * 0.4, cy - baseRadius * 0.3, baseRadius * 0.5, 0, Math.PI * 2);
             this.ctx.fill();
 
             this.ctx.restore();
