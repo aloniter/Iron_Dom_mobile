@@ -11,7 +11,7 @@ class IronDomeGame {
         this.uiOverlay = document.querySelector('.ui-overlay');
         this.scorePanel = document.querySelector('.score-panel');
         this.controls = document.querySelector('.controls');
-        
+
         // Game state
         this.gameState = 'loading'; // loading, menu, playing, paused, gameOver, victory
         this.score = 0;
@@ -19,14 +19,44 @@ class IronDomeGame {
         this.intercepts = 0;
         this.maxHits = 5;
         this.targetIntercepts = 20;
-        
+
         // Game objects
         this.enemyMissiles = [];
         this.interceptors = [];
         this.explosions = [];
         this.cityLights = [];
         this.stars = [];
-        
+
+        // Visual effects - NEW
+        this.smokeParticles = [];
+        this.sparks = [];
+        this.debris = [];
+        this.shockwaves = [];
+        this.scorePopups = [];
+        this.clouds = [];
+
+        // Combo system - NEW
+        this.combo = 0;
+        this.lastInterceptTime = 0;
+        this.comboTimeout = 2000; // 2 seconds to maintain combo
+        this.comboDisplay = { alpha: 0, scale: 1 };
+
+        // Screen shake - NEW
+        this.screenShake = { intensity: 0, duration: 0, x: 0, y: 0 };
+
+        // Dynamic sky - NEW
+        this.skyColors = {
+            top: { r: 10, g: 10, b: 46 },
+            mid: { r: 22, g: 33, b: 62 },
+            bottom: { r: 15, g: 52, b: 96 }
+        };
+
+        // Mobile/iOS performance settings
+        this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        this.maxSmokeParticles = this.isMobile ? 50 : 100;
+        this.maxSparks = this.isMobile ? 30 : 60;
+        this.maxDebris = this.isMobile ? 20 : 40;
+
         // Touch handling
         this.lastTouchTime = 0;
         this.touchCooldown = 150; // ms between touches
@@ -85,9 +115,28 @@ class IronDomeGame {
         this.resizeCanvas();
         this.generateStars();
         this.generateCityLights();
+        this.generateClouds();
         this.bindEvents();
         this.gameLoop();
         this.startActivityTracking();
+    }
+
+    generateClouds() {
+        this.clouds = [];
+        const numClouds = this.isMobile ? 4 : 8; // Fewer clouds on mobile
+        for (let i = 0; i < numClouds; i++) {
+            this.clouds.push({
+                x: Math.random() * this.canvasWidth,
+                y: Math.random() * this.canvasHeight * 0.4,
+                width: 80 + Math.random() * 120,
+                height: 30 + Math.random() * 40,
+                speed: 5 + Math.random() * 15, // Parallax speed
+                alpha: 0.1 + Math.random() * 0.15,
+                layer: Math.floor(Math.random() * 3) // 0, 1, or 2 for parallax depth
+            });
+        }
+        // Sort by layer for proper rendering
+        this.clouds.sort((a, b) => a.layer - b.layer);
     }
     
     initializeNPCs() {
@@ -388,6 +437,7 @@ class IronDomeGame {
         this.resizeCanvas();
         this.generateStars();
         this.generateCityLights();
+        this.generateClouds();
     }
     
     handleClick(e) {
@@ -502,16 +552,25 @@ class IronDomeGame {
     
     updateGame(deltaTime) {
         if (this.gameState !== 'playing' && !this.trumpAnimation.active) return;
-        
+
         // Update Trump animation if active
         if (this.trumpAnimation.active) {
             this.updateTrumpAnimation(deltaTime);
             return;
         }
-        
+
+        // Update screen shake
+        this.updateScreenShake(deltaTime);
+
+        // Update dynamic sky
+        this.updateDynamicSky();
+
+        // Update clouds (parallax)
+        this.updateClouds(deltaTime);
+
         // Update interceptors
         this.updateInterceptors(deltaTime);
-        
+
         // Spawn enemy missiles
         this.enemySpawnTimer += deltaTime;
         if (this.enemySpawnTimer >= this.enemySpawnInterval) {
@@ -520,47 +579,162 @@ class IronDomeGame {
             // Increase difficulty over time
             this.enemySpawnInterval = Math.max(1000, this.enemySpawnInterval - 30);
         }
-        
+
         // Update enemy missiles
         this.updateEnemyMissiles(deltaTime);
-        
+
         // Update NPCs
         this.updateNPCs(deltaTime);
-        
+
         // Update camera flashes
         this.updateCameraFlashes(deltaTime);
-        
+
         // Update explosions
         this.updateExplosions(deltaTime);
-        
+
+        // Update visual effects
+        this.updateSmokeParticles(deltaTime);
+        this.updateSparks(deltaTime);
+        this.updateDebris(deltaTime);
+        this.updateShockwaves(deltaTime);
+        this.updateScorePopups(deltaTime);
+        this.updateComboDisplay(deltaTime);
+
         // Check collisions
         this.checkCollisions();
-        
+
+        // Check combo timeout
+        if (this.combo > 0 && Date.now() - this.lastInterceptTime > this.comboTimeout) {
+            this.combo = 0;
+        }
+
         // Check game over conditions
         if (this.hits >= this.maxHits) {
             this.gameOver();
+        }
+    }
+
+    updateClouds(deltaTime) {
+        this.clouds.forEach(cloud => {
+            // Move based on layer (parallax effect)
+            const speedMultiplier = 0.3 + cloud.layer * 0.3;
+            cloud.x -= cloud.speed * speedMultiplier * deltaTime / 1000;
+
+            // Wrap around
+            if (cloud.x + cloud.width < 0) {
+                cloud.x = this.canvasWidth + 50;
+                cloud.y = Math.random() * this.canvasHeight * 0.4;
+            }
+        });
+    }
+
+    updateSmokeParticles(deltaTime) {
+        for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
+            const smoke = this.smokeParticles[i];
+            smoke.x += smoke.vx;
+            smoke.y += smoke.vy;
+            smoke.life -= deltaTime / 1000;
+            smoke.alpha = smoke.life * 0.6;
+            smoke.size += 0.1; // Expand over time
+
+            if (smoke.life <= 0) {
+                this.smokeParticles.splice(i, 1);
+            }
+        }
+    }
+
+    updateSparks(deltaTime) {
+        for (let i = this.sparks.length - 1; i >= 0; i--) {
+            const spark = this.sparks[i];
+            spark.x += spark.vx;
+            spark.y += spark.vy;
+            spark.vy += 0.1; // Gravity
+            spark.life -= deltaTime / 1000;
+            spark.alpha = spark.life * 2;
+            spark.vx *= 0.98;
+            spark.vy *= 0.98;
+
+            if (spark.life <= 0) {
+                this.sparks.splice(i, 1);
+            }
+        }
+    }
+
+    updateDebris(deltaTime) {
+        for (let i = this.debris.length - 1; i >= 0; i--) {
+            const d = this.debris[i];
+            d.x += d.vx;
+            d.y += d.vy;
+            d.vy += d.gravity; // Apply gravity
+            d.rotation += d.rotationSpeed;
+            d.life -= deltaTime / 2000;
+            d.alpha = d.life;
+
+            if (d.life <= 0 || d.y > this.canvasHeight) {
+                this.debris.splice(i, 1);
+            }
+        }
+    }
+
+    updateShockwaves(deltaTime) {
+        for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+            const sw = this.shockwaves[i];
+            sw.radius += sw.speed * deltaTime / 1000;
+            sw.alpha = 1 - (sw.radius / sw.maxRadius);
+
+            if (sw.radius >= sw.maxRadius) {
+                this.shockwaves.splice(i, 1);
+            }
+        }
+    }
+
+    updateScorePopups(deltaTime) {
+        for (let i = this.scorePopups.length - 1; i >= 0; i--) {
+            const popup = this.scorePopups[i];
+            popup.y += popup.vy;
+            popup.life -= deltaTime / 1000;
+            popup.alpha = popup.life;
+            popup.scale += 0.02;
+
+            if (popup.life <= 0) {
+                this.scorePopups.splice(i, 1);
+            }
+        }
+    }
+
+    updateComboDisplay(deltaTime) {
+        if (this.combo > 1) {
+            this.comboDisplay.alpha = Math.min(1, this.comboDisplay.alpha + deltaTime / 200);
+            this.comboDisplay.scale = 1 + Math.sin(Date.now() / 100) * 0.1;
+        } else {
+            this.comboDisplay.alpha = Math.max(0, this.comboDisplay.alpha - deltaTime / 300);
         }
     }
     
     updateInterceptors(deltaTime) {
         for (let i = this.interceptors.length - 1; i >= 0; i--) {
             const interceptor = this.interceptors[i];
-            
+
             // Update trail
             interceptor.trail.push({ x: interceptor.x, y: interceptor.y });
             if (interceptor.trail.length > 6) interceptor.trail.shift();
-            
+
+            // Create smoke trail (less frequent on mobile)
+            if (Math.random() < (this.isMobile ? 0.3 : 0.6)) {
+                this.createSmokeTrail(interceptor.x, interceptor.y, interceptor.vx, interceptor.vy, 'rgba(100, 200, 100, 0.5)');
+            }
+
             // Update position
             interceptor.x += interceptor.vx;
             interceptor.y += interceptor.vy;
-            
+
             // Check if interceptor reached target or went off screen
             const distToTarget = Math.sqrt(
-                Math.pow(interceptor.x - interceptor.targetX, 2) + 
+                Math.pow(interceptor.x - interceptor.targetX, 2) +
                 Math.pow(interceptor.y - interceptor.targetY, 2)
             );
-            
-            if (distToTarget < 20 || interceptor.x < 0 || interceptor.x > this.canvasWidth || 
+
+            if (distToTarget < 20 || interceptor.x < 0 || interceptor.x > this.canvasWidth ||
                 interceptor.y < 0 || interceptor.y > this.canvasHeight) {
                 this.interceptors.splice(i, 1);
                 this.createExplosion(interceptor.x, interceptor.y, '#4444ff');
@@ -571,15 +745,20 @@ class IronDomeGame {
     updateEnemyMissiles(deltaTime) {
         for (let i = this.enemyMissiles.length - 1; i >= 0; i--) {
             const missile = this.enemyMissiles[i];
-            
+
             // Update trail
             missile.trail.push({ x: missile.x, y: missile.y });
             if (missile.trail.length > 8) missile.trail.shift();
-            
+
+            // Create smoke trail for enemy missiles (less frequent on mobile)
+            if (Math.random() < (this.isMobile ? 0.25 : 0.5)) {
+                this.createSmokeTrail(missile.x, missile.y, missile.vx, missile.vy, 'rgba(200, 100, 100, 0.4)');
+            }
+
             // Update position
             missile.x += missile.vx;
             missile.y += missile.vy;
-            
+
             // Check if missile hit ground
             if (missile.y >= this.canvasHeight - 80) {
                 this.enemyMissiles.splice(i, 1);
@@ -588,6 +767,12 @@ class IronDomeGame {
                 this.hits++;
                 this.playSound(200, 0.5, 'sawtooth');
                 this.updateUI();
+
+                // Screen shake on city hit!
+                this.triggerScreenShake(8, 300);
+
+                // Reset combo on hit
+                this.combo = 0;
             }
         }
     }
@@ -700,25 +885,48 @@ class IronDomeGame {
         // Check collisions between interceptors and enemy missiles
         for (let i = this.enemyMissiles.length - 1; i >= 0; i--) {
             const enemy = this.enemyMissiles[i];
-            
+
             for (let j = this.interceptors.length - 1; j >= 0; j--) {
                 const interceptor = this.interceptors[j];
-                
+
                 const distance = Math.sqrt(
-                    Math.pow(enemy.x - interceptor.x, 2) + 
+                    Math.pow(enemy.x - interceptor.x, 2) +
                     Math.pow(enemy.y - interceptor.y, 2)
                 );
-                
+
                 if (distance < 40) {
-                    this.createExplosion((enemy.x + interceptor.x) / 2, 
-                                      (enemy.y + interceptor.y) / 2, '#ffff44');
+                    const explosionX = (enemy.x + interceptor.x) / 2;
+                    const explosionY = (enemy.y + interceptor.y) / 2;
+
+                    this.createExplosion(explosionX, explosionY, '#ffff44');
                     this.enemyMissiles.splice(i, 1);
                     this.interceptors.splice(j, 1);
                     this.intercepts++;
-                    this.score += 100;
+
+                    // Combo system
+                    const now = Date.now();
+                    if (now - this.lastInterceptTime < this.comboTimeout) {
+                        this.combo++;
+                    } else {
+                        this.combo = 1;
+                    }
+                    this.lastInterceptTime = now;
+
+                    // Calculate score with combo multiplier
+                    const basePoints = 100;
+                    const comboMultiplier = Math.min(this.combo, 5); // Max 5x
+                    const points = basePoints * comboMultiplier;
+                    this.score += points;
+
+                    // Create score popup
+                    this.createScorePopup(explosionX, explosionY, points, this.combo > 1);
+
+                    // Small screen shake on successful intercept
+                    this.triggerScreenShake(3, 100);
+
                     this.playSound(600, 0.3, 'triangle');
                     this.updateUI();
-                    
+
                     if (this.intercepts >= this.targetIntercepts) {
                         this.startTrumpAnimation(() => this.showVictoryWithShare());
                     }
@@ -733,28 +941,158 @@ class IronDomeGame {
         if (this.explosions.length >= 8) {
             this.explosions.shift();
         }
-        
+
         const particles = [];
-        const numParticles = 10;
-        
+        const numParticles = 15; // More particles
+
         for (let i = 0; i < numParticles; i++) {
-            const angle = (Math.PI * 2 * i) / numParticles;
-            const speed = Math.random() * 3 + 1;
-            
+            const angle = (Math.PI * 2 * i) / numParticles + Math.random() * 0.3;
+            const speed = Math.random() * 4 + 2;
+
             particles.push({
                 x: x,
                 y: y,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
                 alpha: 1,
-                color: color
+                color: color,
+                size: 2 + Math.random() * 3
             });
         }
-        
+
         this.explosions.push({
             particles: particles,
-            life: 1
+            life: 1,
+            x: x,
+            y: y,
+            color: color,
+            glowSize: 50
         });
+
+        // Add shockwave
+        this.shockwaves.push({
+            x: x,
+            y: y,
+            radius: 10,
+            maxRadius: 80,
+            alpha: 0.8,
+            color: color,
+            speed: 150
+        });
+
+        // Add debris particles
+        this.createDebris(x, y, color);
+
+        // Add sparks
+        this.createSparks(x, y, color);
+    }
+
+    createDebris(x, y, color) {
+        if (this.debris.length > this.maxDebris) return; // Limit for iOS performance
+        const numDebris = this.isMobile ? 4 : 8;
+        for (let i = 0; i < numDebris; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 3 + 1;
+            this.debris.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 2, // Initial upward velocity
+                gravity: 0.1,
+                alpha: 1,
+                life: 1,
+                size: 2 + Math.random() * 4,
+                color: color,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.3
+            });
+        }
+    }
+
+    createSparks(x, y, color) {
+        if (this.sparks.length > this.maxSparks) return; // Limit for iOS performance
+        const numSparks = this.isMobile ? 6 : 12;
+        for (let i = 0; i < numSparks; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 6 + 3;
+            this.sparks.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                alpha: 1,
+                life: 0.5 + Math.random() * 0.3,
+                size: 1 + Math.random() * 2,
+                color: color === '#ffff44' ? '#ffffff' : color
+            });
+        }
+    }
+
+    createSmokeTrail(x, y, vx, vy, color) {
+        if (this.smokeParticles.length > this.maxSmokeParticles) return; // Limit for performance
+
+        this.smokeParticles.push({
+            x: x + (Math.random() - 0.5) * 5,
+            y: y + (Math.random() - 0.5) * 5,
+            vx: -vx * 0.1 + (Math.random() - 0.5) * 0.5,
+            vy: -vy * 0.1 + (Math.random() - 0.5) * 0.5 - 0.3,
+            alpha: 0.6,
+            life: 1,
+            size: 3 + Math.random() * 5,
+            color: color
+        });
+    }
+
+    triggerScreenShake(intensity = 5, duration = 200) {
+        this.screenShake.intensity = intensity;
+        this.screenShake.duration = duration;
+    }
+
+    updateScreenShake(deltaTime) {
+        if (this.screenShake.duration > 0) {
+            this.screenShake.duration -= deltaTime;
+            const intensity = this.screenShake.intensity * (this.screenShake.duration / 200);
+            this.screenShake.x = (Math.random() - 0.5) * intensity * 2;
+            this.screenShake.y = (Math.random() - 0.5) * intensity * 2;
+        } else {
+            this.screenShake.x = 0;
+            this.screenShake.y = 0;
+        }
+    }
+
+    createScorePopup(x, y, points, isCombo = false) {
+        this.scorePopups.push({
+            x: x,
+            y: y,
+            text: isCombo ? `+${points} x${this.combo}!` : `+${points}`,
+            alpha: 1,
+            life: 1,
+            vy: -2,
+            scale: isCombo ? 1.5 : 1,
+            color: isCombo ? '#ffff00' : '#00ff88'
+        });
+    }
+
+    updateDynamicSky() {
+        // Sky gets more dramatic as score increases
+        const progress = Math.min(this.score / 1500, 1); // Max effect at 1500 points
+
+        // Transition from peaceful night to intense red/orange
+        this.skyColors.top = {
+            r: Math.floor(10 + progress * 40),
+            g: Math.floor(10 - progress * 5),
+            b: Math.floor(46 - progress * 20)
+        };
+        this.skyColors.mid = {
+            r: Math.floor(22 + progress * 60),
+            g: Math.floor(33 - progress * 10),
+            b: Math.floor(62 - progress * 30)
+        };
+        this.skyColors.bottom = {
+            r: Math.floor(15 + progress * 80),
+            g: Math.floor(52 + progress * 20),
+            b: Math.floor(96 - progress * 40)
+        };
     }
     
     startTrumpAnimation(callback) {
@@ -913,13 +1251,18 @@ class IronDomeGame {
     }
 
     render() {
-        // Clear canvas
-        this.ctx.fillStyle = 'rgba(10, 10, 46, 1)';
-        this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-        
+        // Apply screen shake
+        this.ctx.save();
+        this.ctx.translate(this.screenShake.x, this.screenShake.y);
+
+        // Draw dynamic sky gradient
+        this.renderDynamicSky();
+
         // Draw background image if loaded
         if (this.imagesLoaded && this.images.background && this.images.background.complete) {
+            this.ctx.globalAlpha = 0.7; // Blend with dynamic sky
             this.ctx.drawImage(this.images.background, 0, 0, this.canvasWidth, this.canvasHeight);
+            this.ctx.globalAlpha = 1;
         } else {
             // Draw stars as fallback
             this.stars.forEach(star => {
@@ -930,23 +1273,191 @@ class IronDomeGame {
                 this.ctx.fill();
                 star.twinkle += 2;
             });
-            
+
             // Draw city lights
             this.renderCityLights();
         }
-        
+
+        // Render parallax clouds
+        this.renderClouds();
+
+        // Render smoke particles (behind missiles)
+        this.renderSmokeParticles();
+
         // Render game objects
         this.renderEnemyMissiles();
         this.renderInterceptors();
+
+        // Render shockwaves
+        this.renderShockwaves();
+
+        // Render explosions with glow
         this.renderExplosions();
+
+        // Render sparks and debris
+        this.renderSparks();
+        this.renderDebris();
+
         this.renderLauncher();
-        
+
         // Render NPCs and camera flashes
         this.renderNPCs();
         this.renderCameraFlashes();
-        
+
+        // Render score popups
+        this.renderScorePopups();
+
+        // Render combo counter
+        this.renderComboCounter();
+
         // Render Trump animation if active
         this.renderTrumpAnimation();
+
+        this.ctx.restore();
+    }
+
+    renderDynamicSky() {
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvasHeight);
+        gradient.addColorStop(0, `rgb(${this.skyColors.top.r}, ${this.skyColors.top.g}, ${this.skyColors.top.b})`);
+        gradient.addColorStop(0.5, `rgb(${this.skyColors.mid.r}, ${this.skyColors.mid.g}, ${this.skyColors.mid.b})`);
+        gradient.addColorStop(1, `rgb(${this.skyColors.bottom.r}, ${this.skyColors.bottom.g}, ${this.skyColors.bottom.b})`);
+
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+    }
+
+    renderClouds() {
+        this.clouds.forEach(cloud => {
+            this.ctx.save();
+            this.ctx.globalAlpha = cloud.alpha;
+            this.ctx.fillStyle = '#ffffff';
+
+            // Draw cloud as multiple overlapping circles (iOS compatible - no ellipse)
+            const cx = cloud.x + cloud.width / 2;
+            const cy = cloud.y + cloud.height / 2;
+            const baseRadius = Math.min(cloud.width, cloud.height) / 2;
+
+            // Main cloud body - multiple circles
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, baseRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.beginPath();
+            this.ctx.arc(cx - baseRadius * 0.8, cy, baseRadius * 0.7, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.beginPath();
+            this.ctx.arc(cx + baseRadius * 0.8, cy, baseRadius * 0.7, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.beginPath();
+            this.ctx.arc(cx - baseRadius * 0.4, cy - baseRadius * 0.3, baseRadius * 0.5, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.beginPath();
+            this.ctx.arc(cx + baseRadius * 0.4, cy - baseRadius * 0.3, baseRadius * 0.5, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.restore();
+        });
+    }
+
+    renderSmokeParticles() {
+        this.smokeParticles.forEach(smoke => {
+            this.ctx.save();
+            this.ctx.globalAlpha = smoke.alpha;
+            this.ctx.fillStyle = smoke.color;
+            this.ctx.beginPath();
+            this.ctx.arc(smoke.x, smoke.y, smoke.size, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        });
+    }
+
+    renderShockwaves() {
+        this.shockwaves.forEach(sw => {
+            this.ctx.save();
+            this.ctx.globalAlpha = sw.alpha;
+            this.ctx.strokeStyle = sw.color;
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+            this.ctx.stroke();
+
+            // Inner ring
+            this.ctx.globalAlpha = sw.alpha * 0.5;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(sw.x, sw.y, sw.radius * 0.7, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.restore();
+        });
+    }
+
+    renderSparks() {
+        this.sparks.forEach(spark => {
+            this.ctx.save();
+            this.ctx.globalAlpha = spark.alpha;
+            this.ctx.fillStyle = spark.color;
+            this.ctx.beginPath();
+            this.ctx.arc(spark.x, spark.y, spark.size, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        });
+    }
+
+    renderDebris() {
+        this.debris.forEach(d => {
+            this.ctx.save();
+            this.ctx.globalAlpha = d.alpha;
+            this.ctx.translate(d.x, d.y);
+            this.ctx.rotate(d.rotation);
+            this.ctx.fillStyle = d.color;
+            this.ctx.fillRect(-d.size / 2, -d.size / 2, d.size, d.size);
+            this.ctx.restore();
+        });
+    }
+
+    renderScorePopups() {
+        this.scorePopups.forEach(popup => {
+            this.ctx.save();
+            this.ctx.globalAlpha = popup.alpha;
+            this.ctx.fillStyle = popup.color;
+            this.ctx.font = `bold ${16 * popup.scale}px Arial`;
+            this.ctx.textAlign = 'center';
+            this.ctx.strokeStyle = '#000000';
+            this.ctx.lineWidth = 3;
+            this.ctx.strokeText(popup.text, popup.x, popup.y);
+            this.ctx.fillText(popup.text, popup.x, popup.y);
+            this.ctx.restore();
+        });
+    }
+
+    renderComboCounter() {
+        if (this.combo > 1 && this.comboDisplay.alpha > 0) {
+            this.ctx.save();
+            this.ctx.globalAlpha = this.comboDisplay.alpha;
+
+            const x = this.canvasWidth / 2;
+            const y = 100;
+
+            this.ctx.font = `bold ${36 * this.comboDisplay.scale}px Arial`;
+            this.ctx.textAlign = 'center';
+
+            // Glow effect
+            this.ctx.shadowColor = '#ffff00';
+            this.ctx.shadowBlur = 20;
+
+            this.ctx.fillStyle = '#ffff00';
+            this.ctx.strokeStyle = '#ff8800';
+            this.ctx.lineWidth = 3;
+
+            const text = `${this.combo}x COMBO!`;
+            this.ctx.strokeText(text, x, y);
+            this.ctx.fillText(text, x, y);
+
+            this.ctx.restore();
+        }
     }
     
     renderCityLights() {
@@ -1042,11 +1553,41 @@ class IronDomeGame {
     
     renderExplosions() {
         this.explosions.forEach(explosion => {
+            // Draw glow effect first (behind particles)
+            if (explosion.x && explosion.y) {
+                this.ctx.save();
+                this.ctx.globalAlpha = explosion.life * 0.6;
+
+                // Outer glow
+                const gradient = this.ctx.createRadialGradient(
+                    explosion.x, explosion.y, 0,
+                    explosion.x, explosion.y, explosion.glowSize * explosion.life
+                );
+                gradient.addColorStop(0, explosion.color);
+                gradient.addColorStop(0.4, explosion.color + '88');
+                gradient.addColorStop(1, 'transparent');
+
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(explosion.x, explosion.y, explosion.glowSize * explosion.life, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Inner bright core
+                this.ctx.globalAlpha = explosion.life;
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.beginPath();
+                this.ctx.arc(explosion.x, explosion.y, 8 * explosion.life, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                this.ctx.restore();
+            }
+
+            // Draw particles
             explosion.particles.forEach(particle => {
                 this.ctx.fillStyle = particle.color;
                 this.ctx.globalAlpha = particle.alpha;
                 this.ctx.beginPath();
-                this.ctx.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
+                this.ctx.arc(particle.x, particle.y, particle.size || 2, 0, Math.PI * 2);
                 this.ctx.fill();
             });
         });
@@ -1163,15 +1704,40 @@ class IronDomeGame {
         this.explosions = [];
         this.enemySpawnTimer = 0;
         this.enemySpawnInterval = 2000;
-        
+
+        // Reset visual effects
+        this.smokeParticles = [];
+        this.sparks = [];
+        this.debris = [];
+        this.shockwaves = [];
+        this.scorePopups = [];
+
+        // Reset combo
+        this.combo = 0;
+        this.lastInterceptTime = 0;
+        this.comboDisplay = { alpha: 0, scale: 1 };
+
+        // Reset screen shake
+        this.screenShake = { intensity: 0, duration: 0, x: 0, y: 0 };
+
+        // Reset sky colors
+        this.skyColors = {
+            top: { r: 10, g: 10, b: 46 },
+            mid: { r: 22, g: 33, b: 62 },
+            bottom: { r: 15, g: 52, b: 96 }
+        };
+
         // Reset NPCs
         this.initializeNPCs();
         this.cameraFlashes = [];
-        
+
+        // Regenerate clouds
+        this.generateClouds();
+
         this.gameMessage.classList.add('hidden');
         this.updateUI();
         this.showUI(); // Ensure UI is visible when starting
-        
+
         // Initialize audio context on user interaction
         if (this.audioContext && this.audioContext.state === 'suspended') {
             this.audioContext.resume();
@@ -1278,9 +1844,36 @@ class IronDomeGame {
     }
     
     updateUI() {
-        document.getElementById('score').textContent = this.score;
-        document.getElementById('hits').textContent = this.hits;
-        document.getElementById('intercepts').textContent = this.intercepts;
+        const scoreEl = document.getElementById('score');
+        const hitsEl = document.getElementById('hits');
+        const interceptsEl = document.getElementById('intercepts');
+        const progressFill = document.getElementById('progressFill');
+
+        // Animate score change
+        const oldScore = parseInt(scoreEl.textContent) || 0;
+        if (this.score > oldScore) {
+            scoreEl.parentElement.classList.add('score-pop');
+            setTimeout(() => scoreEl.parentElement.classList.remove('score-pop'), 300);
+        }
+
+        scoreEl.textContent = this.score;
+        hitsEl.textContent = this.hits;
+        interceptsEl.textContent = this.intercepts;
+
+        // Update progress bar
+        const progress = (this.intercepts / this.targetIntercepts) * 100;
+        if (progressFill) {
+            progressFill.style.width = `${progress}%`;
+
+            // Change color based on progress
+            if (progress >= 80) {
+                progressFill.style.background = 'linear-gradient(90deg, #00ff88, #ffff00, #ff8800)';
+            } else if (progress >= 50) {
+                progressFill.style.background = 'linear-gradient(90deg, #00ff88, #00cc66, #ffff00)';
+            } else {
+                progressFill.style.background = 'linear-gradient(90deg, #4a90e2, #00ff88)';
+            }
+        }
     }
 }
 
