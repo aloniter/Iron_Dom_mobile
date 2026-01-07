@@ -54,7 +54,13 @@
       <div class="score-panel">
         <div class="score">Score: <span id="score">0</span></div>
         <div class="hits">Hits: <span id="hits">0</span>/5</div>
-        <div class="intercepts">Intercepts: <span id="intercepts">0</span>/20</div>
+        <div class="intercepts-container">
+          <div class="intercepts-label">Intercepts: <span id="intercepts">0</span>/20</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-glow"></div>
+          </div>
+        </div>
       </div>
 
       <div class="game-message" id="gameMessage">
