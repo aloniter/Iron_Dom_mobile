@@ -43,23 +43,33 @@
 
   <title>Iron Dome - Mobile Missile Defense</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="preload" as="image" href="photos/bg.png">
-  <link rel="preload" as="image" href="photos/iran_rocket.png">
-  <link rel="preload" as="image" href="photos/iron_dom.png">
-  <link rel="preload" as="image" href="photos/israel_rocket.png">
+  <link rel="preload" as="image" href="photos/Tel_aviv.png">
+  <link rel="preload" as="image" href="photos/jerusalem.png">
+  <link rel="preload" as="image" href="photos/haifa.png">
+  <link rel="preload" as="image" href="photos/iran_rocket_clean.png">
+  <link rel="preload" as="image" href="photos/iron_dom_clean.png">
+  <link rel="preload" as="image" href="photos/israel_rocket_clean.png">
 </head>
 <body>
   <div class="game-container">
     <div class="ui-overlay">
       <div class="score-panel">
         <div class="score">Score: <span id="score">0</span></div>
-        <div class="hits">Hits: <span id="hits">0</span>/5</div>
-        <div class="intercepts">Intercepts: <span id="intercepts">0</span>/20</div>
+        <div class="hits">Hits: <span id="hits">0</span>/<span id="maxHits">5</span></div>
+        <div class="intercepts">Intercepts: <span id="intercepts">0</span>/<span id="targetIntercepts">20</span></div>
       </div>
 
       <div class="game-message" id="gameMessage">
         <h2>Iron Dome</h2>
-        <p id="gameInstructions">Tap anywhere on the screen to launch interceptor missiles!<br>Protect the cities by intercepting enemy missiles.<br><strong>Controls:</strong> Touch/Tap</p>
+        <p id="gameInstructions">Choose a city map and defend it from incoming missiles.<br>Tap anywhere to launch interceptors.<br><strong>Controls:</strong> Touch/Tap</p>
+        <div id="citySelector" class="city-selector">
+          <p class="city-selector-label">Choose city map to defend</p>
+          <div class="city-options" role="group" aria-label="Choose city map">
+            <button type="button" class="city-option-btn selected" data-city="tel_aviv">Tel Aviv</button>
+            <button type="button" class="city-option-btn" data-city="jerusalem">Jerusalem</button>
+            <button type="button" class="city-option-btn" data-city="haifa">Haifa</button>
+          </div>
+        </div>
         <button id="startBtn" class="start-button">🎯 TAP TO START</button>
         <div class="credits">Created by Alon Iter</div>
       </div>

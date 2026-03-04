@@ -1,6 +1,6 @@
 /* sw.js — Iron Dome PWA offline cache */
 
-const VERSION = 'v1.0.0-' + (self.registration?.scope || 'local');
+const VERSION = 'v1.3.0-' + (self.registration?.scope || 'local');
 const APP_CACHE = `iron-dome-app-${VERSION}`;
 const RUNTIME_CACHE = `iron-dome-runtime-${VERSION}`;
 
@@ -18,10 +18,12 @@ const APP_SHELL = [
 
 // Static assets you reference in game.js + index.html
 const STATIC_ASSETS = [
-  './photos/bg.png',
-  './photos/iran_rocket.png',
-  './photos/iron_dom.png',
-  './photos/israel_rocket.png',
+  './photos/Tel_aviv.png',
+  './photos/jerusalem.png',
+  './photos/haifa.png',
+  './photos/iran_rocket_clean.png',
+  './photos/iron_dom_clean.png',
+  './photos/israel_rocket_clean.png',
   './photos/Trump.png',
   './photos/npc1.png',
   './photos/npc2.png',
