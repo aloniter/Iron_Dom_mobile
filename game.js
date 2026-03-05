@@ -351,7 +351,8 @@ class IronDomeGame {
     }
 
     showMenuMessage() {
-        this.showMessage('Iron Dome Defense', this.getMenuInstructions(), '🎯 DEFEND NOW', { showCitySelector: true });
+        const title = 'Iron Dome<br><span style="font-size:0.55em;opacity:0.7;letter-spacing:2px;text-transform:uppercase;font-weight:700;">Defense</span>';
+        this.showMessage(title, this.getMenuInstructions(), '🎯 DEFEND NOW', { showCitySelector: true });
     }
 
     setSelectedCity(cityKey) {
@@ -1823,13 +1824,39 @@ class IronDomeGame {
         this.scorePopups.forEach(popup => {
             this.ctx.save();
             this.ctx.globalAlpha = popup.alpha;
-            this.ctx.fillStyle = popup.color;
-            this.ctx.font = `bold ${16 * popup.scale}px Arial`;
             this.ctx.textAlign = 'center';
-            this.ctx.strokeStyle = '#000000';
-            this.ctx.lineWidth = 3;
-            this.ctx.strokeText(popup.text, popup.x, popup.y);
-            this.ctx.fillText(popup.text, popup.x, popup.y);
+            this.ctx.textBaseline = 'middle';
+
+            const fontSize = Math.round(18 * popup.scale);
+            this.ctx.font = `900 ${fontSize}px -apple-system, Arial, sans-serif`;
+
+            if (popup.scale > 1) {
+                // Combo popup — layered glow + outline
+                this.ctx.shadowColor = popup.color;
+                this.ctx.shadowBlur = 18;
+                // Dark outline for readability
+                this.ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+                this.ctx.lineWidth = fontSize * 0.18;
+                this.ctx.lineJoin = 'round';
+                this.ctx.strokeText(popup.text, popup.x, popup.y);
+                // Bright fill
+                this.ctx.fillStyle = popup.color;
+                this.ctx.fillText(popup.text, popup.x, popup.y);
+                // Subtle inner highlight
+                this.ctx.shadowBlur = 0;
+                this.ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                this.ctx.fillText(popup.text, popup.x, popup.y - fontSize * 0.04);
+            } else {
+                // Regular intercept popup
+                this.ctx.shadowColor = popup.color;
+                this.ctx.shadowBlur = 8;
+                this.ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+                this.ctx.lineWidth = fontSize * 0.14;
+                this.ctx.lineJoin = 'round';
+                this.ctx.strokeText(popup.text, popup.x, popup.y);
+                this.ctx.fillStyle = popup.color;
+                this.ctx.fillText(popup.text, popup.x, popup.y);
+            }
             this.ctx.restore();
         });
     }
@@ -1838,24 +1865,76 @@ class IronDomeGame {
         if (this.combo > 1 && this.comboDisplay.alpha > 0) {
             this.ctx.save();
             this.ctx.globalAlpha = this.comboDisplay.alpha;
-
-            const x = this.canvasWidth / 2;
-            const y = 100;
-
-            this.ctx.font = `bold ${36 * this.comboDisplay.scale}px Arial`;
             this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
 
-            // Glow effect
-            this.ctx.shadowColor = '#ffff00';
-            this.ctx.shadowBlur = 20;
+            const cx = this.canvasWidth / 2;
+            // Position below the top control bar, with a bit of breathing room
+            const cy = Math.round(this.canvasHeight * 0.14);
 
-            this.ctx.fillStyle = '#ffff00';
-            this.ctx.strokeStyle = '#ff8800';
-            this.ctx.lineWidth = 3;
+            const baseFontSize = Math.round(Math.min(this.canvasWidth * 0.1, 42) * this.comboDisplay.scale);
+            const labelFontSize = Math.round(baseFontSize * 0.52);
 
-            const text = `${this.combo}x COMBO!`;
-            this.ctx.strokeText(text, x, y);
-            this.ctx.fillText(text, x, y);
+            // ── Background pill ──
+            const pillW = baseFontSize * 5.2;
+            const pillH = baseFontSize * 1.55;
+            const pillR = pillH / 2;
+            const pillX = cx - pillW / 2;
+            const pillY = cy - pillH / 2;
+
+            this.ctx.save();
+            this.ctx.globalAlpha = this.comboDisplay.alpha * 0.6;
+            this.ctx.beginPath();
+            this.ctx.moveTo(pillX + pillR, pillY);
+            this.ctx.lineTo(pillX + pillW - pillR, pillY);
+            this.ctx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + pillR, pillR);
+            this.ctx.lineTo(pillX + pillW, pillY + pillH - pillR);
+            this.ctx.arcTo(pillX + pillW, pillY + pillH, pillX + pillW - pillR, pillY + pillH, pillR);
+            this.ctx.lineTo(pillX + pillR, pillY + pillH);
+            this.ctx.arcTo(pillX, pillY + pillH, pillX, pillY + pillH - pillR, pillR);
+            this.ctx.lineTo(pillX, pillY + pillR);
+            this.ctx.arcTo(pillX, pillY, pillX + pillR, pillY, pillR);
+            this.ctx.closePath();
+            const pillGrad = this.ctx.createLinearGradient(pillX, pillY, pillX, pillY + pillH);
+            pillGrad.addColorStop(0, 'rgba(80, 30, 0, 0.82)');
+            pillGrad.addColorStop(1, 'rgba(40, 10, 0, 0.82)');
+            this.ctx.fillStyle = pillGrad;
+            this.ctx.fill();
+            this.ctx.strokeStyle = 'rgba(255, 180, 0, 0.55)';
+            this.ctx.lineWidth = 1.5;
+            this.ctx.stroke();
+            this.ctx.restore();
+
+            // ── Multiplier number (left side) ──
+            this.ctx.save();
+            this.ctx.globalAlpha = this.comboDisplay.alpha;
+            const numText = `${this.combo}x`;
+            this.ctx.font = `900 ${baseFontSize}px -apple-system, Arial, sans-serif`;
+
+            // Deep glow layers
+            this.ctx.shadowColor = '#ff8800';
+            this.ctx.shadowBlur = 28;
+            this.ctx.fillStyle = '#ff8800';
+            this.ctx.fillText(numText, cx - baseFontSize * 1.05, cy);
+            this.ctx.shadowBlur = 14;
+            this.ctx.fillStyle = '#ffcc00';
+            this.ctx.fillText(numText, cx - baseFontSize * 1.05, cy);
+            // Bright white core
+            this.ctx.shadowBlur = 0;
+            this.ctx.fillStyle = '#fff9e0';
+            this.ctx.fillText(numText, cx - baseFontSize * 1.05, cy - 1);
+            this.ctx.restore();
+
+            // ── "COMBO!" label (right side) ──
+            this.ctx.save();
+            this.ctx.globalAlpha = this.comboDisplay.alpha;
+            this.ctx.font = `800 ${labelFontSize}px -apple-system, Arial, sans-serif`;
+            this.ctx.letterSpacing = '2px';
+            this.ctx.shadowColor = '#ffdd00';
+            this.ctx.shadowBlur = 14;
+            this.ctx.fillStyle = '#ffee55';
+            this.ctx.fillText('COMBO!', cx + baseFontSize * 0.72, cy);
+            this.ctx.restore();
 
             this.ctx.restore();
         }
@@ -2256,7 +2335,7 @@ class IronDomeGame {
     showMessage(title, message, buttonText = '🎯 TAP TO START', options = {}) {
         const { showCitySelector = true } = options;
         this.gameMessage.classList.remove('hidden');
-        this.gameMessage.querySelector('h2').textContent = title;
+        this.gameMessage.querySelector('h2').innerHTML = title;
         this.gameMessage.querySelector('#gameInstructions').innerHTML = message;
         this.startBtn.textContent = buttonText;
         this.setCitySelectorVisibility(showCitySelector);
@@ -2271,7 +2350,7 @@ class IronDomeGame {
     showMessageWithShare(title, message, buttonText = '🎯 TAP TO START', options = {}) {
         const { showCitySelector = true } = options;
         this.gameMessage.classList.remove('hidden');
-        this.gameMessage.querySelector('h2').textContent = title;
+        this.gameMessage.querySelector('h2').innerHTML = title;
         this.gameMessage.querySelector('#gameInstructions').innerHTML = message;
         this.startBtn.textContent = buttonText;
         this.setCitySelectorVisibility(showCitySelector);

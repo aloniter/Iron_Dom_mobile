@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Iron Dome">
   <meta name="theme-color" content="#0a0a2e">
-  <meta name="description" content="Iron Dome - Mobile Missile Defense Game. Protect cities by intercepting enemy missiles with touch controls.">
+  <meta name="description" content="Iron Dome — Mobile Missile Defense Game. Protect cities by intercepting enemy missiles with touch controls.">
 
   <!-- PWA manifest -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -20,20 +20,20 @@
 
   <!-- Apple Touch Icons -->
   <link rel="apple-touch-icon" href="photos/icon.png">
-  <link rel="apple-touch-icon" sizes="57x57" href="photos/icon.png">
-  <link rel="apple-touch-icon" sizes="60x60" href="photos/icon.png">
-  <link rel="apple-touch-icon" sizes="72x72" href="photos/icon.png">
-  <link rel="apple-touch-icon" sizes="76x76" href="photos/icon.png">
+  <link rel="apple-touch-icon" sizes="57x57"   href="photos/icon.png">
+  <link rel="apple-touch-icon" sizes="60x60"   href="photos/icon.png">
+  <link rel="apple-touch-icon" sizes="72x72"   href="photos/icon.png">
+  <link rel="apple-touch-icon" sizes="76x76"   href="photos/icon.png">
   <link rel="apple-touch-icon" sizes="114x114" href="photos/icon.png">
   <link rel="apple-touch-icon" sizes="120x120" href="photos/icon.png">
   <link rel="apple-touch-icon" sizes="144x144" href="photos/icon.png">
   <link rel="apple-touch-icon" sizes="152x152" href="photos/icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="photos/icon.png">
 
-  <!-- Android/Chrome Icons -->
-  <link rel="icon" type="image/png" sizes="16x16" href="photos/icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="photos/icon.png">
-  <link rel="icon" type="image/png" sizes="96x96" href="photos/icon.png">
+  <!-- Android / Chrome Icons -->
+  <link rel="icon" type="image/png" sizes="16x16"   href="photos/icon.png">
+  <link rel="icon" type="image/png" sizes="32x32"   href="photos/icon.png">
+  <link rel="icon" type="image/png" sizes="96x96"   href="photos/icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="photos/icon.png">
   <link rel="icon" type="image/png" sizes="512x512" href="photos/icon.png">
 
@@ -41,8 +41,10 @@
   <meta name="msapplication-TileImage" content="photos/icon.png">
   <meta name="msapplication-TileColor" content="#0a0a2e">
 
-  <title>Iron Dome - Mobile Missile Defense</title>
+  <title>Iron Dome — Mobile Missile Defense</title>
   <link rel="stylesheet" href="style.css">
+
+  <!-- Critical asset preloads -->
   <link rel="preload" as="image" href="photos/Tel_aviv.png">
   <link rel="preload" as="image" href="photos/jerusalem.png">
   <link rel="preload" as="image" href="photos/haifa.png">
@@ -52,16 +54,28 @@
 </head>
 <body>
   <div class="game-container">
+
+    <!-- ── UI Overlay ── -->
     <div class="ui-overlay">
+
+      <!-- Score Panel (top-left) -->
       <div class="score-panel">
         <div class="score">Score: <span id="score">0</span></div>
         <div class="hits">Hits: <span id="hits">0</span>/<span id="maxHits">5</span></div>
         <div class="intercepts">Intercepts: <span id="intercepts">0</span>/<span id="targetIntercepts">20</span></div>
       </div>
 
+      <!-- Game Message Modal (center) -->
       <div class="game-message" id="gameMessage">
-        <h2>Iron Dome</h2>
-        <p id="gameInstructions">Choose a city map and defend it from incoming missiles.<br>Tap anywhere to launch interceptors.<br><strong>Controls:</strong> Touch/Tap</p>
+        <h2>Iron Dome<br><span style="font-size:0.55em;opacity:0.7;letter-spacing:2px;text-transform:uppercase;">Defense</span></h2>
+
+        <p id="gameInstructions">
+          Choose a city map and defend it from incoming missiles.<br>
+          <strong>Current city:</strong> Tel Aviv<br>
+          Tap anywhere to launch interceptor missiles.
+        </p>
+
+        <!-- City Selector -->
         <div id="citySelector" class="city-selector">
           <p class="city-selector-label">Choose city map to defend</p>
           <div class="city-options" role="group" aria-label="Choose city map">
@@ -70,38 +84,44 @@
             <button type="button" class="city-option-btn" data-city="haifa">Haifa</button>
           </div>
         </div>
-        <button id="startBtn" class="start-button">🎯 TAP TO START</button>
+
+        <!-- Start / Action Button -->
+        <button id="startBtn" class="start-button">🎯 DEFEND NOW</button>
+
         <div class="credits">Created by Alon Iter</div>
       </div>
 
+      <!-- Controls (top-right) -->
       <div class="controls">
-        <button id="pauseBtn" class="control-btn">⏸️</button>
-        <button id="restartBtn" class="control-btn">🔄</button>
+        <button id="pauseBtn"   class="control-btn" aria-label="Pause">⏸️</button>
+        <button id="restartBtn" class="control-btn" aria-label="Restart">🔄</button>
       </div>
 
-      <!-- Touch feedback indicator -->
-      <div id="touchFeedback" class="touch-feedback"></div>
-    </div>
+      <!-- Touch Feedback Ring -->
+      <div id="touchFeedback" class="touch-feedback" aria-hidden="true"></div>
+    </div><!-- /.ui-overlay -->
 
-    <canvas id="gameCanvas"></canvas>
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas" aria-label="Iron Dome game canvas"></canvas>
 
-    <!-- Loading screen -->
+    <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
       <div class="loading-content">
         <h2>🚀 Iron Dome</h2>
         <div class="loading-spinner"></div>
-        <p>Loading assets...</p>
+        <p>Loading assets…</p>
       </div>
     </div>
 
-    <!-- Offline banner (shown when fetch fails during runtime) -->
+    <!-- Offline Banner -->
     <div id="offlineBanner" class="offline-banner" hidden>You're offline — playing from cache.</div>
-  </div>
+
+  </div><!-- /.game-container -->
 
   <script src="game.js"></script>
 
   <script>
-    // Register the service worker for PWA/offline
+    // Register Service Worker for PWA / offline play
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
@@ -109,11 +129,11 @@
       });
     }
 
-    // Optional: show a banner if the app goes offline/online
+    // Offline banner toggle
     (function () {
       const banner = document.getElementById('offlineBanner');
       function update() { banner.hidden = navigator.onLine; }
-      window.addEventListener('online', update);
+      window.addEventListener('online',  update);
       window.addEventListener('offline', update);
       update();
     })();
