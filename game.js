@@ -1578,6 +1578,32 @@ class IronDomeGame {
         }
     }
 
+    createSpriteExplosion(x, y) {
+        // Enforce active cap — recycle oldest if at limit
+        if (this.spriteExplosions.length >= 6) {
+            const oldest = this.spriteExplosions.shift();
+            if (this.spriteExplosionPool.length < 8) {
+                this.spriteExplosionPool.push(oldest);
+            }
+        }
+
+        // Pull from pool or create new object
+        const obj = this.spriteExplosionPool.length > 0
+            ? this.spriteExplosionPool.pop()
+            : {};
+
+        // Initialize all fields (overwrites any stale state)
+        obj.x = x;
+        obj.y = y;
+        obj.phase = 'small';
+        obj.elapsed = 0;
+        obj.alpha = 1;
+        obj.scale = 0.6;
+        obj.flashFrame = true;
+
+        this.spriteExplosions.push(obj);
+    }
+
     createSmokeTrail(x, y, vx, vy, color) {
         if (this.smokeParticles.length > this.maxSmokeParticles) return; // Limit for performance
 
