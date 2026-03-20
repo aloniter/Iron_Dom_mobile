@@ -26,3 +26,6 @@ Original prompt: this is a game of the iron dom of israel defce the iran attack,
 - Ensured game uses real sprite images for `iran_rocket`, `israel_rocket`, and `iron_dom`:
   - Added cleaned transparent sprite files (`*_clean.png`) and switched loader/preloads/SW cache to use them.
   - Re-enabled image sprite rendering (`useImageSprites=true`).
+- 2026-03-20:
+  - Verified the tracked `photos/*.png` assets are already present on `origin/main`; no new image files were missing from Git.
+  - Ran the Playwright smoke client against `http://127.0.0.1:8000` and confirmed the latest gameplay capture renders the city map and missile sprites without runtime failures.
