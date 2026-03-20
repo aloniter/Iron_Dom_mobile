@@ -2396,10 +2396,11 @@ class IronDomeGame {
             const img = s.phase === 'small' ? smallImg : largeImg;
             const spriteW = img ? img.width : 80;
             const spriteH = img ? img.height : 80;
-            const glowRadius = (spriteW / 2) * s.scale;
+            const glowRadius = spriteW / 2; // in scaled space
 
             this.ctx.save();
             this.ctx.translate(s.x, s.y);
+            this.ctx.scale(s.scale, s.scale); // applied before all drawing
 
             // Draw glow behind sprite
             const gradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, glowRadius);
@@ -2413,11 +2414,11 @@ class IronDomeGame {
             // Draw sprite (guard: skip if not loaded yet)
             if (img) {
                 this.ctx.globalAlpha = s.alpha;
-                this.ctx.scale(s.scale, s.scale);
                 this.ctx.drawImage(img, -spriteW / 2, -spriteH / 2, spriteW, spriteH);
             }
 
-            // White flash on first frame (flashFrame cleared by update, not here)
+            // White flash on first frame — 20 canvas pixels regardless of scale
+            // (flashFrame cleared by update, not here)
             if (s.flashFrame) {
                 this.ctx.globalAlpha = 1;
                 this.ctx.fillStyle = '#ffffff';
