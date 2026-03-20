@@ -67,3 +67,16 @@ Original prompt: this is a game of the iron dom of israel defce the iran attack,
   - Verified with:
     - `output/combo-ui-12x-fixed.png`, confirming the `12x COMBO!` banner and `+500 x12!` popup both have visible gap on mobile
     - `node "$WEB_GAME_CLIENT" --url http://127.0.0.1:8123 --click-selector '#startBtn' --actions-json '{"steps":[{"buttons":[],"frames":90}]}' --iterations 1 --pause-ms 250 --screenshot-dir output/web-game-combo-ui-smoke`
+  - Fixed the mobile bottom-scene composition pass:
+    - replaced the separate `getGroundY` / launcher Y / NPC Y offsets with cached `getSceneMetrics()` viewport metrics and one shared `groundY`
+    - hardened `getSceneMetrics()` so it self-refreshes when the visual viewport changes even if a resize event is delayed
+    - switched canvas sizing to `visualViewport`-aware dimensions and synced `--app-width` / `--app-height` CSS vars so the gameplay area follows the visible mobile viewport
+    - made the city art the primary scene base at full opacity and strengthened the bottom atmospheric shading to remove the fake blue floor/band effect
+    - cropped the Iron Dome sprite at load time to remove the side missile margin, then rendered the launcher by base alignment instead of top-left placement
+    - aligned NPC feet using per-sprite transparent bottom-margin metrics and added subtle contact shadows for the launcher/NPCs so they sit on the same ground plane
+    - extended `window.render_game_to_text()` with `safeBottomInset`, `groundY`, launcher `baseY`, and per-NPC `footY`
+  - Verified with Playwright on:
+    - `390x844` portrait (`haifa` and `tel_aviv`) via screenshots and `render_game_to_text()` scene metrics
+    - `390x720` portrait (`haifa`) to emulate visible mobile browser chrome while keeping the same shared ground baseline
+  - Remaining unrelated issue:
+    - `photos/explosion.png` still 404s during load; not changed in this pass because it did not block the ground-plane fix
