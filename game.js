@@ -721,14 +721,15 @@ class IronDomeGame {
     loadImages() {
         const imagesToLoad = [
             { name: 'israelRocket', src: 'photos/israel_rocket_game.png' },
-            { name: 'ironDom', src: 'photos/iron_dom.png?v=20260320-1' },
+            { name: 'ironDom', src: 'photos/iron_dom_clean.png' },
             { name: 'telAvivMap', src: 'photos/Tel_aviv.png' },
             { name: 'jerusalemMap', src: 'photos/jerusalem.png' },
             { name: 'haifaMap', src: 'photos/haifa.png' },
             { name: 'iranRocket', src: 'photos/iran_rocket_game.png' },
             { name: 'trump', src: 'photos/Trump.png' },
             { name: 'npc1', src: 'photos/npc1.png' },
-            { name: 'npc2', src: 'photos/npc2.png' }
+            { name: 'npc2', src: 'photos/npc2.png' },
+            { name: 'explosionSheet', src: 'photos/explosion.png' }
         ];
         
         this.totalImages = imagesToLoad.length;
