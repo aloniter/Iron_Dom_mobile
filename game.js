@@ -728,7 +728,8 @@ class IronDomeGame {
             { name: 'iranRocket', src: 'photos/iran_rocket_game.png' },
             { name: 'trump', src: 'photos/Trump.png' },
             { name: 'npc1', src: 'photos/npc1.png' },
-            { name: 'npc2', src: 'photos/npc2.png' }
+            { name: 'npc2', src: 'photos/npc2.png' },
+            { name: 'explosionSheet', src: 'photos/explosion.png' }
         ];
         
         this.totalImages = imagesToLoad.length;
@@ -747,6 +748,22 @@ class IronDomeGame {
                 try {
                     if (this.useImageSprites && this.transparentSpriteNames.has(imageInfo.name)) {
                         this.processedImages[imageInfo.name] = this.removeEdgeBackground(img);
+                    } else if (imageInfo.name === 'explosionSheet') {
+                        const halfW = Math.floor(img.naturalWidth / 2);
+                        const h = img.naturalHeight;
+
+                        const smallCanvas = document.createElement('canvas');
+                        smallCanvas.width = halfW;
+                        smallCanvas.height = h;
+                        smallCanvas.getContext('2d').drawImage(img, 0, 0, halfW, h, 0, 0, halfW, h);
+
+                        const largeCanvas = document.createElement('canvas');
+                        largeCanvas.width = halfW;
+                        largeCanvas.height = h;
+                        largeCanvas.getContext('2d').drawImage(img, halfW, 0, halfW, h, 0, 0, halfW, h);
+
+                        this.images.explosionSmall = smallCanvas;
+                        this.images.explosionLarge = largeCanvas;
                     }
                 } catch (error) {
                     console.warn(`Post-process failed for image: ${imageInfo.src}`, error);
