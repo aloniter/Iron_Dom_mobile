@@ -50,7 +50,7 @@
   <link rel="preload" as="image" href="photos/jerusalem.png">
   <link rel="preload" as="image" href="photos/haifa.png">
   <link rel="preload" as="image" href="photos/iran_rocket_game.png">
-  <link rel="preload" as="image" href="photos/iron_dom_clean.png">
+  <link rel="preload" as="image" href="photos/iron_dom.png?v=20260320-1">
   <link rel="preload" as="image" href="photos/israel_rocket_game.png">
 </head>
 <body>
@@ -119,15 +119,15 @@
 
   </div><!-- /.game-container -->
 
-  <script src="game.js"></script>
+  <script src="game.js?v=148"></script>
 
   <script>
-    // Register Service Worker for PWA / offline play
+    // Unregister all service workers and clear caches to force fresh load
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .catch(err => console.warn('SW registration failed:', err));
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.unregister());
       });
+      caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
     }
 
     // Offline banner toggle

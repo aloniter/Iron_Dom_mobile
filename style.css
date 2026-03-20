@@ -1,4 +1,7 @@
 :root {
+    --app-width: 100vw;
+    --app-height: 100vh;
+    --safe-bottom-inset: 0px;
     --bg-base: #050b1b;
     --bg-panel-top: rgba(9, 16, 36, 0.88);
     --bg-panel-bottom: rgba(5, 10, 24, 0.94);
@@ -29,10 +32,11 @@
 }
 
 html, body {
-    width: 100%;
-    height: 100%;
+    width: var(--app-width);
+    height: var(--app-height);
     overflow: hidden;
     position: fixed;
+    inset: 0;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Arial, sans-serif;
     background: var(--bg-base);
     color: var(--text-main);
@@ -59,8 +63,8 @@ body {
 
 .game-container {
     position: relative;
-    width: 100%;
-    height: 100%;
+    width: var(--app-width);
+    height: var(--app-height);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -70,8 +74,8 @@ body {
 #gameCanvas {
     position: absolute;
     inset: 0;
-    width: 100%;
-    height: 100%;
+    width: var(--app-width);
+    height: var(--app-height);
     display: block;
     background: linear-gradient(180deg, #081125 0%, #101b36 65%, #162745 100%);
     cursor: none;
@@ -79,6 +83,17 @@ body {
     will-change: transform;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
+}
+
+.safe-area-probe {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 0;
+    height: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    visibility: hidden;
+    pointer-events: none;
 }
 
 .ui-overlay {
