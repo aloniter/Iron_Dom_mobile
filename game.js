@@ -469,6 +469,10 @@ class IronDomeGame {
         return Number.isFinite(value) ? value : 0;
     }
 
+    _cfg(path, fallback) {
+        return window.GameConfig ? window.GameConfig.get(path) ?? fallback : fallback;
+    }
+
     getViewportMetrics() {
         const viewport = window.visualViewport;
         const viewportWidth = Math.round(
@@ -490,11 +494,16 @@ class IronDomeGame {
     }
 
     updateSceneMetrics(viewportMetrics = this.getViewportMetrics()) {
-        const baselineLift = Math.round(Math.max(24, Math.min(viewportMetrics.viewportHeight * 0.04, 36)));
+        const blMin = this._cfg('world.baselineLiftMin', 24);
+        const blMax = this._cfg('world.baselineLiftMax', 36);
+        const blFactor = this._cfg('world.baselineLiftFactor', 0.04);
+        const groundFactor = this._cfg('world.groundYFactor', 0.72);
+        const safeOffset = this._cfg('world.safeAreaOffset', 0);
+        const baselineLift = Math.round(Math.max(blMin, Math.min(viewportMetrics.viewportHeight * blFactor, blMax)));
         const groundY = Math.round(
             Math.max(
-                viewportMetrics.viewportHeight * 0.72,
-                viewportMetrics.viewportHeight - baselineLift - viewportMetrics.safeBottomInset
+                viewportMetrics.viewportHeight * groundFactor,
+                viewportMetrics.viewportHeight - baselineLift - viewportMetrics.safeBottomInset - safeOffset
             )
         );
 
@@ -518,11 +527,14 @@ class IronDomeGame {
             this.sceneMetrics.viewportHeight !== viewportMetrics.viewportHeight ||
             this.sceneMetrics.safeBottomInset !== viewportMetrics.safeBottomInset;
 
-        if (needsRefresh) {
+        // Always recalculate when debug config is active (config values affect groundY)
+        if (needsRefresh || window.GameConfig) {
             const sceneMetrics = this.updateSceneMetrics(viewportMetrics);
-            document.documentElement.style.setProperty('--app-width', `${sceneMetrics.viewportWidth}px`);
-            document.documentElement.style.setProperty('--app-height', `${sceneMetrics.viewportHeight}px`);
-            document.documentElement.style.setProperty('--safe-bottom-inset', `${sceneMetrics.safeBottomInset}px`);
+            if (needsRefresh) {
+                document.documentElement.style.setProperty('--app-width', `${sceneMetrics.viewportWidth}px`);
+                document.documentElement.style.setProperty('--app-height', `${sceneMetrics.viewportHeight}px`);
+                document.documentElement.style.setProperty('--safe-bottom-inset', `${sceneMetrics.safeBottomInset}px`);
+            }
             return sceneMetrics;
         }
 
@@ -659,7 +671,8 @@ class IronDomeGame {
     }
 
     positionNPC(npc, sceneMetrics = this.getSceneMetrics()) {
-        const footY = sceneMetrics.npcFootY;
+        const yOff = this._cfg('people.yOffset', 0);
+        const footY = sceneMetrics.npcFootY + yOff;
         const footInset = this.getNPCFootInset(npc.type, npc.height);
         npc.x = Math.min(Math.max(npc.x, -npc.width), sceneMetrics.viewportWidth);
         npc.footY = footY;
@@ -674,11 +687,18 @@ class IronDomeGame {
     getLauncherLayout(sceneMetrics = this.getSceneMetrics()) {
         const launcherImage = this.getImageAsset('ironDom');
         const { width: sourceWidth, height: sourceHeight } = this.getImageDimensions(launcherImage);
-        const aspectRatio = sourceWidth && sourceHeight ? sourceWidth / sourceHeight : 1.1;
-        const height = Math.round(Math.max(74, Math.min(sceneMetrics.viewportHeight * 0.11, this.isMobile ? 92 : 108)));
+        const fallbackAR = this._cfg('launcher.aspectRatio', 1.1);
+        const aspectRatio = sourceWidth && sourceHeight ? sourceWidth / sourceHeight : fallbackAR;
+        const scaleMin = this._cfg('launcher.scaleMin', 74);
+        const scaleFactor = this._cfg('launcher.scaleFactor', 0.11);
+        const scaleMax = this.isMobile ? this._cfg('launcher.scaleMaxMobile', 92) : this._cfg('launcher.scaleMaxDesktop', 108);
+        const xOff = this._cfg('launcher.xOffset', 0);
+        const yOff = this._cfg('launcher.yOffset', 0);
+        const muzzleFactor = this._cfg('launcher.muzzleYFactor', 0.18);
+        const height = Math.round(Math.max(scaleMin, Math.min(sceneMetrics.viewportHeight * scaleFactor, scaleMax)));
         const width = Math.round(height * aspectRatio);
-        const x = Math.round(sceneMetrics.viewportWidth / 2);
-        const y = Math.round(sceneMetrics.launcherBaseY - height);
+        const x = Math.round(sceneMetrics.viewportWidth / 2 + xOff);
+        const y = Math.round(sceneMetrics.launcherBaseY - height + yOff);
 
         return {
             x,
@@ -687,7 +707,7 @@ class IronDomeGame {
             height,
             baseY: sceneMetrics.launcherBaseY,
             muzzleX: x,
-            muzzleY: Math.round(y + height * 0.18)
+            muzzleY: Math.round(y + height * muzzleFactor)
         };
     }
 
@@ -906,18 +926,21 @@ class IronDomeGame {
     initializeNPCs() {
         this.npcs = [];
         const sceneMetrics = this.getSceneMetrics();
-        // Create 3-4 NPCs
+        const npcW = this._cfg('people.width', 30);
+        const npcH = this._cfg('people.height', 40);
+        const spdMin = this._cfg('people.speedMin', 20);
+        const spdMax = this._cfg('people.speedMax', 50);
         const npcCount = 3 + Math.floor(Math.random() * 2); // 3-4 NPCs
-        
+
         for (let i = 0; i < npcCount; i++) {
             const npc = {
                 id: i,
                 type: Math.random() > 0.5 ? 'npc1' : 'npc2',
                 x: Math.random() * sceneMetrics.viewportWidth,
                 y: 0,
-                width: 30,
-                height: 40,
-                speed: 20 + Math.random() * 30, // 20-50 pixels per second
+                width: npcW,
+                height: npcH,
+                speed: spdMin + Math.random() * (spdMax - spdMin),
                 direction: Math.random() > 0.5 ? 1 : -1, // 1 for right, -1 for left
                 alive: true,
                 photographing: false,
@@ -1338,17 +1361,17 @@ class IronDomeGame {
         }
         
         const launcher = this.getLauncherLayout();
-        const startX = launcher.muzzleX;
-        const startY = launcher.muzzleY;
-        
+        const startX = launcher.muzzleX + this._cfg('interceptor.launchOffsetX', 0);
+        const startY = launcher.muzzleY + this._cfg('interceptor.launchOffsetY', 0);
+
         const dx = targetX - startX;
         const dy = targetY - startY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         if (!Number.isFinite(distance) || distance < 1) {
             return;
         }
-        const speed = 6;
-        
+        const speed = this._cfg('interceptor.speed', 6);
+
         this.interceptors.push({
             x: startX,
             y: startY,
@@ -1358,8 +1381,8 @@ class IronDomeGame {
             vy: (dy / distance) * speed,
             trail: [],
             angle: Math.atan2(dy, dx) + Math.PI / 2,
-            width: 30,
-            height: 60
+            width: this._cfg('interceptor.width', 30),
+            height: this._cfg('interceptor.height', 60)
         });
 
         // Launch sound
@@ -1382,12 +1405,12 @@ class IronDomeGame {
         
         this.enemyMissiles.push({
             x: x,
-            y: 0,
+            y: 0 + this._cfg('enemyMissile.spawnYOffset', 0),
             vx: (dx / distance) * speed,
             vy: (dy / distance) * speed,
             trail: [],
-            width: 30,
-            height: 60
+            width: this._cfg('enemyMissile.width', 30),
+            height: this._cfg('enemyMissile.height', 60)
         });
     }
 
@@ -1753,10 +1776,11 @@ class IronDomeGame {
             }
 
             if (s.phase === 'fade') {
-                const t = Math.min(s.elapsed / 300, 1);
+                const fadeDur = this._cfg('effects.spriteExplosionDuration', 300);
+                const t = Math.min(s.elapsed / fadeDur, 1);
                 s.scale = 1.0;
                 s.alpha = 1 - t;
-                if (s.elapsed >= 300) {
+                if (s.elapsed >= fadeDur) {
                     // Recycle to pool
                     this.spriteExplosions.splice(i, 1);
                     if (this.spriteExplosionPool.length < 8) {
@@ -1780,7 +1804,7 @@ class IronDomeGame {
                     Math.pow(enemy.y - interceptor.y, 2)
                 );
 
-                if (distance < 40) {
+                if (distance < this._cfg('enemyMissile.collisionRadius', 40)) {
                     const explosionX = (enemy.x + interceptor.x) / 2;
                     const explosionY = (enemy.y + interceptor.y) / 2;
 
@@ -1854,7 +1878,7 @@ class IronDomeGame {
             x: x,
             y: y,
             color: color,
-            glowSize: 50
+            glowSize: this._cfg('effects.explosionGlowSize', 50)
         });
 
         // Add shockwave
@@ -1862,10 +1886,10 @@ class IronDomeGame {
             x: x,
             y: y,
             radius: 10,
-            maxRadius: 80,
+            maxRadius: this._cfg('effects.shockwaveMaxRadius', 80),
             alpha: 0.8,
             color: color,
-            speed: 150
+            speed: this._cfg('effects.shockwaveSpeed', 150)
         });
 
         // Add debris particles
@@ -1958,7 +1982,8 @@ class IronDomeGame {
     }
 
     triggerScreenShake(intensity = 5, duration = 200) {
-        this.screenShake.intensity = intensity;
+        const mult = this._cfg('effects.screenShakeIntensity', 1.0);
+        this.screenShake.intensity = intensity * mult;
         this.screenShake.duration = duration;
     }
 
@@ -1975,7 +2000,7 @@ class IronDomeGame {
     }
 
     createScorePopup(x, y, points, isCombo = false) {
-        const comboText = isCombo ? `x${this.combo}!` : '';
+        const comboText = isCombo ? `x${Math.min(this.combo, 5)}!` : '';
         this.scorePopups.push({
             x: x,
             y: y,
@@ -2177,28 +2202,30 @@ class IronDomeGame {
         const sceneMetrics = this.getSceneMetrics();
 
         // Draw selected city map if loaded
-        const mapImage = this.getCityBackgroundImage();
-        if (this.imagesLoaded && this.isRenderableImage(mapImage)) {
-            const background = this.activeCityConfig?.background || {};
-            this.ctx.globalAlpha = 1;
-            this.drawImageCover(mapImage, background.focusX ?? 0.5, background.focusY ?? 0.5);
-            this.ctx.globalAlpha = 1;
-        } else {
-            // Draw dynamic sky gradient
-            this.renderDynamicSky();
+        if (this._cfg('background.visible', true)) {
+            const mapImage = this.getCityBackgroundImage();
+            if (this.imagesLoaded && this.isRenderableImage(mapImage)) {
+                const background = this.activeCityConfig?.background || {};
+                this.ctx.globalAlpha = 1;
+                this.drawImageCover(mapImage, background.focusX ?? 0.5, background.focusY ?? 0.5);
+                this.ctx.globalAlpha = 1;
+            } else {
+                // Draw dynamic sky gradient
+                this.renderDynamicSky();
 
-            // Draw stars as fallback
-            this.stars.forEach(star => {
-                const alpha = 0.5 + 0.5 * Math.sin(star.twinkle / 100);
-                this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                this.ctx.beginPath();
-                this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                this.ctx.fill();
-                star.twinkle += 2;
-            });
+                // Draw stars as fallback
+                this.stars.forEach(star => {
+                    const alpha = 0.5 + 0.5 * Math.sin(star.twinkle / 100);
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    star.twinkle += 2;
+                });
 
-            // Draw city lights
-            this.renderCityLights();
+                // Draw city lights
+                this.renderCityLights();
+            }
         }
 
         this.renderBackgroundGrade(sceneMetrics);
@@ -2242,7 +2269,25 @@ class IronDomeGame {
         // Render Trump animation if active
         this.renderTrumpAnimation();
 
+        // Debug overlays (drawn last, on top of everything)
+        this.renderDebugOverlays(sceneMetrics);
+
         this.ctx.restore();
+
+        // HUD visibility (HTML elements)
+        if (this.scorePanel) {
+            const scoreVisible = this._cfg('hud.score.visible', true);
+            this.scorePanel.style.display = scoreVisible ? '' : 'none';
+            if (scoreVisible) {
+                const sx = this._cfg('hud.score.xOffset', 0);
+                const sy = this._cfg('hud.score.yOffset', 0);
+                const ss = this._cfg('hud.score.scale', 1.0);
+                this.scorePanel.style.transform = (sx || sy || ss !== 1.0)
+                    ? `translate(${sx}px, ${sy}px) scale(${ss})`
+                    : '';
+                this.scorePanel.style.transformOrigin = 'top left';
+            }
+        }
     }
 
     renderDynamicSky() {
@@ -2292,6 +2337,7 @@ class IronDomeGame {
     }
 
     renderSmokeParticles() {
+        if (!this._cfg('effects.smokeVisible', true)) return;
         this.smokeParticles.forEach(smoke => {
             this.ctx.save();
             this.ctx.globalAlpha = smoke.alpha;
@@ -2304,6 +2350,7 @@ class IronDomeGame {
     }
 
     renderShockwaves() {
+        if (!this._cfg('effects.shockwavesVisible', true)) return;
         this.shockwaves.forEach(sw => {
             this.ctx.save();
             this.ctx.globalAlpha = sw.alpha;
@@ -2324,6 +2371,7 @@ class IronDomeGame {
     }
 
     renderSparks() {
+        if (!this._cfg('effects.sparksVisible', true)) return;
         this.sparks.forEach(spark => {
             this.ctx.save();
             this.ctx.globalAlpha = spark.alpha;
@@ -2336,6 +2384,7 @@ class IronDomeGame {
     }
 
     renderDebris() {
+        if (!this._cfg('effects.debrisVisible', true)) return;
         this.debris.forEach(d => {
             this.ctx.save();
             this.ctx.globalAlpha = d.alpha;
@@ -2401,17 +2450,20 @@ class IronDomeGame {
     }
 
     renderComboCounter() {
+        if (!this._cfg('hud.combo.visible', true)) return;
         if (this.combo > 1 && this.comboDisplay.alpha > 0) {
             this.ctx.save();
             this.ctx.globalAlpha = this.comboDisplay.alpha;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
 
-            const cx = this.canvasWidth / 2;
-            // Position below the top control bar, with a bit of breathing room
-            const cy = Math.round(this.canvasHeight * 0.14);
+            const comboScale = this._cfg('hud.combo.scale', 1.0);
+            const comboXOff = this._cfg('hud.combo.xOffset', 0);
+            const comboYOff = this._cfg('hud.combo.yOffset', 0);
+            const cx = this.canvasWidth / 2 + comboXOff;
+            const cy = Math.round(this.canvasHeight * 0.14) + comboYOff;
 
-            const baseFontSize = Math.round(Math.min(this.canvasWidth * 0.1, 42) * this.comboDisplay.scale);
+            const baseFontSize = Math.round(Math.min(this.canvasWidth * 0.1, 42) * this.comboDisplay.scale * comboScale);
             const labelFontSize = Math.round(baseFontSize * 0.52);
             const numText = `${this.combo}x`;
             const labelText = 'COMBO!';
@@ -2507,9 +2559,10 @@ class IronDomeGame {
     }
     
     renderEnemyMissiles() {
+        if (!this._cfg('enemyMissile.visible', true)) return;
         this.enemyMissiles.forEach(missile => {
             // Draw trail
-            if (missile.trail.length > 1) {
+            if (this._cfg('enemyMissile.trailVisible', true) && missile.trail.length > 1) {
                 this.ctx.strokeStyle = 'rgba(255, 68, 68, 0.8)';
                 this.ctx.lineWidth = 3;
                 this.ctx.beginPath();
@@ -2577,9 +2630,10 @@ class IronDomeGame {
     }
     
     renderInterceptors() {
+        if (!this._cfg('interceptor.visible', true)) return;
         this.interceptors.forEach(interceptor => {
             // Draw trail
-            if (interceptor.trail.length > 1) {
+            if (this._cfg('interceptor.trailVisible', true) && interceptor.trail.length > 1) {
                 this.ctx.strokeStyle = 'rgba(68, 255, 68, 0.8)';
                 this.ctx.lineWidth = 3;
                 this.ctx.beginPath();
@@ -2641,6 +2695,7 @@ class IronDomeGame {
     }
     
     renderExplosions() {
+        if (!this._cfg('effects.explosionsVisible', true)) return;
         this.explosions.forEach(explosion => {
             // Draw glow effect first (behind particles)
             if (explosion.x && explosion.y) {
@@ -2684,10 +2739,11 @@ class IronDomeGame {
     }
 
     renderSpriteExplosions() {
+        if (!this._cfg('effects.spriteExplosionsVisible', true)) return;
         if (this.spriteExplosions.length === 0) return;
 
         this.spriteExplosions.forEach(s => {
-            const r = 18; // radius of star in canvas px (before scale)
+            const r = this._cfg('effects.spriteExplosionRadius', 18);
 
             this.ctx.save();
             this.ctx.translate(s.x, s.y);
@@ -2735,6 +2791,7 @@ class IronDomeGame {
     }
 
     renderLauncher(sceneMetrics = this.getSceneMetrics()) {
+        if (!this._cfg('launcher.visible', true)) return;
         const launcher = this.getLauncherLayout(sceneMetrics);
         const launcherX = launcher.x;
         const launcherY = launcher.y;
@@ -2771,6 +2828,7 @@ class IronDomeGame {
     }
     
     renderNPCs(sceneMetrics = this.getSceneMetrics()) {
+        if (!this._cfg('people.visible', true)) return;
         this.npcs.forEach(npc => {
             const layout = this.positionNPC(npc, sceneMetrics);
             this.ctx.save();
@@ -2842,6 +2900,133 @@ class IronDomeGame {
         });
     }
     
+    renderDebugOverlays(sceneMetrics = this.getSceneMetrics()) {
+        const ctx = this.ctx;
+
+        // Baseline line
+        if (this._cfg('debug.showBaseline', false)) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 0, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            ctx.moveTo(0, sceneMetrics.groundY);
+            ctx.lineTo(sceneMetrics.viewportWidth, sceneMetrics.groundY);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255, 0, 255, 0.9)';
+            ctx.font = '11px monospace';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(`groundY: ${sceneMetrics.groundY}`, 8, sceneMetrics.groundY - 4);
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        // Anchor points
+        if (this._cfg('debug.showAnchors', false)) {
+            ctx.save();
+            const launcher = this.getLauncherLayout(sceneMetrics);
+            const drawCross = (x, y, color, label) => {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(x - 6, y); ctx.lineTo(x + 6, y);
+                ctx.moveTo(x, y - 6); ctx.lineTo(x, y + 6);
+                ctx.stroke();
+                if (label) {
+                    ctx.fillStyle = color;
+                    ctx.font = '9px monospace';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(label, x + 8, y - 2);
+                }
+            };
+            drawCross(launcher.x, launcher.y + launcher.height / 2, '#0f0', 'launcher');
+            drawCross(launcher.muzzleX, launcher.muzzleY, '#ff0', 'muzzle');
+            this.npcs.forEach((npc, i) => {
+                drawCross(npc.x + npc.width / 2, npc.footY, '#0ff', `npc${i}`);
+            });
+            ctx.restore();
+        }
+
+        // Hitboxes
+        if (this._cfg('debug.showHitboxes', false)) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+            ctx.lineWidth = 1;
+            const collR = this._cfg('enemyMissile.collisionRadius', 40);
+            this.enemyMissiles.forEach(m => {
+                ctx.save();
+                ctx.translate(m.x, m.y);
+                const angle = Math.atan2(m.vy, m.vx) + Math.PI / 2;
+                ctx.rotate(angle);
+                ctx.strokeRect(-m.width / 2, -m.height / 2, m.width, m.height);
+                ctx.restore();
+                // Collision radius
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(255, 100, 100, 0.4)';
+                ctx.arc(m.x, m.y, collR, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+            });
+            ctx.strokeStyle = 'rgba(100, 255, 100, 0.6)';
+            this.interceptors.forEach(m => {
+                ctx.save();
+                ctx.translate(m.x, m.y);
+                ctx.rotate(m.angle);
+                ctx.strokeRect(-m.width / 2, -m.height / 2, m.width, m.height);
+                ctx.restore();
+            });
+            ctx.restore();
+        }
+
+        // Spawn points
+        if (this._cfg('debug.showSpawnPoints', false)) {
+            const spawnY = this._cfg('enemyMissile.spawnYOffset', 0);
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 165, 0, 0.6)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(0, spawnY);
+            ctx.lineTo(sceneMetrics.viewportWidth, spawnY);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255, 165, 0, 0.8)';
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`spawn Y: ${spawnY}`, 8, spawnY + 2);
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        // Safe area guides
+        if (this._cfg('debug.showSafeArea', false)) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 150, 255, 0.15)';
+            const sbi = sceneMetrics.safeBottomInset;
+            if (sbi > 0) {
+                ctx.fillRect(0, sceneMetrics.viewportHeight - sbi, sceneMetrics.viewportWidth, sbi);
+            }
+            ctx.strokeStyle = 'rgba(0, 150, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            if (sbi > 0) {
+                ctx.beginPath();
+                ctx.moveTo(0, sceneMetrics.viewportHeight - sbi);
+                ctx.lineTo(sceneMetrics.viewportWidth, sceneMetrics.viewportHeight - sbi);
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(0, 150, 255, 0.8)';
+                ctx.font = '9px monospace';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(`safe-bottom: ${sbi}px`, sceneMetrics.viewportWidth - 8, sceneMetrics.viewportHeight - sbi - 2);
+            }
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+    }
+
     stepFrame(deltaTime) {
         const safeDelta = Number.isFinite(deltaTime)
             ? Math.max(0, Math.min(deltaTime, this.maxFrameDelta))
