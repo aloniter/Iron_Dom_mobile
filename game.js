@@ -1486,14 +1486,14 @@ class IronDomeGame {
         }
     }
     
-    createExplosion(x, y, color) {
+    createExplosion(x, y, color, options = {}) {
         // Limit explosions for performance
         if (this.explosions.length >= 8) {
             this.explosions.shift();
         }
 
         const particles = [];
-        const numParticles = 15; // More particles
+        const numParticles = options.numParticles ?? 15;
 
         for (let i = 0; i < numParticles; i++) {
             const angle = (Math.PI * 2 * i) / numParticles + Math.random() * 0.3;
