@@ -1490,7 +1490,9 @@ class IronDomeGame {
                     const explosionX = (enemy.x + interceptor.x) / 2;
                     const explosionY = (enemy.y + interceptor.y) / 2;
 
-                    this.createExplosion(explosionX, explosionY, '#ffff44');
+                    const numParticles = this.isMobile ? 6 : 10;
+                    this.createExplosion(explosionX, explosionY, '#ffff44', { numParticles });
+                    this.createSpriteExplosion(explosionX, explosionY);
                     this.enemyMissiles.splice(i, 1);
                     this.interceptors.splice(j, 1);
                     this.intercepts++;
