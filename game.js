@@ -751,6 +751,7 @@ class IronDomeGame {
                     } else if (imageInfo.name === 'explosionSheet') {
                         const halfW = Math.floor(img.naturalWidth / 2);
                         const h = img.naturalHeight;
+                        if (!halfW || !h) throw new Error('explosionSheet has invalid dimensions');
 
                         const smallCanvas = document.createElement('canvas');
                         smallCanvas.width = halfW;
