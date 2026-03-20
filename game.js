@@ -1,8 +1,11 @@
 class IronDomeGame {
     constructor() {
+        this.gameContainer = document.querySelector('.game-container');
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.gameMessage = document.getElementById('gameMessage');
+        this.messageTitle = this.gameMessage.querySelector('h2');
+        this.messageBody = document.getElementById('gameInstructions');
         this.startBtn = document.getElementById('startBtn');
         this.citySelector = document.getElementById('citySelector');
         this.cityOptionButtons = Array.from(document.querySelectorAll('.city-option-btn'));
@@ -30,6 +33,7 @@ class IronDomeGame {
         this.targetIntercepts = this.activeCityConfig.gameplay.targetIntercepts;
         this.baseSkyColors = this.cloneSkyColors(this.activeCityConfig.skyColors);
         this.skyColors = this.cloneSkyColors(this.baseSkyColors);
+        this.syncUIMode();
 
         // Game objects
         this.enemyMissiles = [];
@@ -138,7 +142,15 @@ class IronDomeGame {
     createCityConfigs() {
         return {
             tel_aviv: {
-                name: 'Tel Aviv',
+                name: 'תל אביב',
+                background: {
+                    focusX: 0.56,
+                    focusY: 0.64,
+                    mapAlpha: 0.72,
+                    overlayTop: 0.1,
+                    overlayBottom: 0.58,
+                    vignetteAlpha: 0.2
+                },
                 skyColors: {
                     top: { r: 8, g: 18, b: 50 },
                     mid: { r: 20, g: 47, b: 91 },
@@ -163,7 +175,15 @@ class IronDomeGame {
                 }
             },
             jerusalem: {
-                name: 'Jerusalem',
+                name: 'ירושלים',
+                background: {
+                    focusX: 0.52,
+                    focusY: 0.6,
+                    mapAlpha: 0.7,
+                    overlayTop: 0.09,
+                    overlayBottom: 0.54,
+                    vignetteAlpha: 0.18
+                },
                 skyColors: {
                     top: { r: 22, g: 15, b: 42 },
                     mid: { r: 58, g: 37, b: 66 },
@@ -188,7 +208,15 @@ class IronDomeGame {
                 }
             },
             haifa: {
-                name: 'Haifa',
+                name: 'חיפה',
+                background: {
+                    focusX: 0.5,
+                    focusY: 0.66,
+                    mapAlpha: 0.6,
+                    overlayTop: 0.2,
+                    overlayBottom: 0.68,
+                    vignetteAlpha: 0.28
+                },
                 skyColors: {
                     top: { r: 9, g: 26, b: 58 },
                     mid: { r: 24, g: 65, b: 103 },
@@ -260,51 +288,24 @@ class IronDomeGame {
             ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imageData.data;
-            const width = canvas.width;
-            const height = canvas.height;
-            const visited = new Uint8Array(width * height);
-            const queue = [];
-
-            const isBackgroundPixel = (offset) => {
+            for (let offset = 0; offset < data.length; offset += 4) {
                 const alpha = data[offset + 3];
-                if (alpha === 0) return true;
+                if (alpha === 0) continue;
+
                 const r = data[offset];
                 const g = data[offset + 1];
                 const b = data[offset + 2];
                 const max = Math.max(r, g, b);
                 const min = Math.min(r, g, b);
-                const lowSaturation = (max - min) < 45;
-                return max > 200 && lowSaturation;
-            };
+                const brightness = (r + g + b) / 3;
+                const lowSaturation = (max - min) < 34;
 
-            const enqueue = (x, y) => {
-                if (x < 0 || y < 0 || x >= width || y >= height) return;
-                const idx = y * width + x;
-                if (visited[idx]) return;
-                const offset = idx * 4;
-                if (!isBackgroundPixel(offset)) return;
-                visited[idx] = 1;
-                queue.push([x, y]);
-            };
-
-            for (let x = 0; x < width; x++) {
-                enqueue(x, 0);
-                enqueue(x, height - 1);
-            }
-            for (let y = 1; y < height - 1; y++) {
-                enqueue(0, y);
-                enqueue(width - 1, y);
-            }
-
-            while (queue.length > 0) {
-                const [x, y] = queue.shift();
-                const idx = y * width + x;
-                const offset = idx * 4;
-                data[offset + 3] = 0;
-                enqueue(x + 1, y);
-                enqueue(x - 1, y);
-                enqueue(x, y + 1);
-                enqueue(x, y - 1);
+                if (brightness > 236 && lowSaturation) {
+                    data[offset + 3] = 0;
+                } else if (brightness > 208 && lowSaturation) {
+                    const fade = Math.max(0, Math.min(1, (236 - brightness) / 28));
+                    data[offset + 3] = Math.round(alpha * fade);
+                }
             }
 
             ctx.putImageData(imageData, 0, 0);
@@ -326,7 +327,113 @@ class IronDomeGame {
     }
 
     getSelectedCityName() {
-        return this.activeCityConfig?.name || 'Unknown City';
+        return this.activeCityConfig?.name || 'עיר לא ידועה';
+    }
+
+    getUIMode() {
+        if (this.gameState === 'loading') {
+            return 'loading';
+        }
+        if (this.gameState === 'menu') {
+            return 'menu';
+        }
+        if (this.gameState === 'paused') {
+            return 'paused';
+        }
+        if (this.gameState === 'gameOver' || this.gameState === 'victory') {
+            return 'result';
+        }
+        return 'playing';
+    }
+
+    syncUIMode() {
+        if (!this.gameContainer) return;
+        this.gameContainer.dataset.uiMode = this.getUIMode();
+        this.gameContainer.dataset.city = this.selectedCity;
+    }
+
+    setGameState(nextState) {
+        this.gameState = nextState;
+        this.syncUIMode();
+    }
+
+    getImageDimensions(image) {
+        return {
+            width: image?.naturalWidth || image?.videoWidth || image?.width || 0,
+            height: image?.naturalHeight || image?.videoHeight || image?.height || 0
+        };
+    }
+
+    drawImageCover(image, focusX = 0.5, focusY = 0.5) {
+        const { width: imageWidth, height: imageHeight } = this.getImageDimensions(image);
+        if (!imageWidth || !imageHeight || !this.canvasWidth || !this.canvasHeight) {
+            return;
+        }
+
+        const canvasAspect = this.canvasWidth / this.canvasHeight;
+        const imageAspect = imageWidth / imageHeight;
+        let sourceWidth = imageWidth;
+        let sourceHeight = imageHeight;
+
+        if (imageAspect > canvasAspect) {
+            sourceWidth = imageHeight * canvasAspect;
+        } else {
+            sourceHeight = imageWidth / canvasAspect;
+        }
+
+        const desiredCenterX = imageWidth * focusX;
+        const desiredCenterY = imageHeight * focusY;
+        const maxSourceX = Math.max(0, imageWidth - sourceWidth);
+        const maxSourceY = Math.max(0, imageHeight - sourceHeight);
+        const sourceX = Math.min(Math.max(desiredCenterX - sourceWidth / 2, 0), maxSourceX);
+        const sourceY = Math.min(Math.max(desiredCenterY - sourceHeight / 2, 0), maxSourceY);
+
+        this.ctx.drawImage(
+            image,
+            sourceX,
+            sourceY,
+            sourceWidth,
+            sourceHeight,
+            0,
+            0,
+            this.canvasWidth,
+            this.canvasHeight
+        );
+    }
+
+    renderBackgroundGrade() {
+        const background = this.activeCityConfig?.background || {};
+        const topAlpha = background.overlayTop ?? 0.1;
+        const bottomAlpha = background.overlayBottom ?? 0.56;
+        const vignetteAlpha = background.vignetteAlpha ?? 0.2;
+
+        const atmosphere = this.ctx.createLinearGradient(0, 0, 0, this.canvasHeight);
+        atmosphere.addColorStop(0, `rgba(6, 17, 40, ${topAlpha})`);
+        atmosphere.addColorStop(0.42, `rgba(6, 14, 34, ${topAlpha * 0.42})`);
+        atmosphere.addColorStop(1, `rgba(4, 10, 24, ${bottomAlpha * 0.42})`);
+        this.ctx.fillStyle = atmosphere;
+        this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+
+        const lowerThird = this.ctx.createLinearGradient(0, this.canvasHeight * 0.48, 0, this.canvasHeight);
+        lowerThird.addColorStop(0, 'rgba(4, 10, 24, 0)');
+        lowerThird.addColorStop(0.55, `rgba(5, 12, 26, ${bottomAlpha * 0.58})`);
+        lowerThird.addColorStop(1, `rgba(4, 10, 24, ${bottomAlpha})`);
+        this.ctx.fillStyle = lowerThird;
+        this.ctx.fillRect(0, this.canvasHeight * 0.48, this.canvasWidth, this.canvasHeight * 0.52);
+
+        const vignette = this.ctx.createRadialGradient(
+            this.canvasWidth / 2,
+            this.canvasHeight * 0.38,
+            Math.min(this.canvasWidth, this.canvasHeight) * 0.2,
+            this.canvasWidth / 2,
+            this.canvasHeight * 0.38,
+            Math.max(this.canvasWidth, this.canvasHeight) * 0.82
+        );
+        vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vignette.addColorStop(0.72, `rgba(5, 12, 28, ${vignetteAlpha * 0.4})`);
+        vignette.addColorStop(1, `rgba(5, 12, 28, ${vignetteAlpha})`);
+        this.ctx.fillStyle = vignette;
+        this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
 
     getGroundY() {
@@ -340,9 +447,29 @@ class IronDomeGame {
         };
     }
 
+    getMenuTitle() {
+        return 'כיפת ברזל<br><span class="game-title-subtitle">הגנה</span>';
+    }
+
     getMenuInstructions() {
         const cityName = this.getSelectedCityName();
-        return `Choose a city map and defend it from incoming missiles.<br><strong>Current city:</strong> ${cityName}<br>Tap anywhere to launch interceptor missiles.`;
+        return `בחרו מפת עיר והגנו עליה מפני טילים נכנסים.<br><strong>העיר הנוכחית:</strong> ${cityName}<br>הקישו בכל מקום כדי לשגר טילי יירוט.`;
+    }
+
+    getLoadingText(progress) {
+        if (Number.isFinite(progress)) {
+            return `טוען את קובצי המשחק... ${Math.round(progress)}%`;
+        }
+
+        return 'טוען את קובצי המשחק...';
+    }
+
+    getGameOverMessage() {
+        return `${this.getSelectedCityName()} ספגה יותר מדי פגיעות.<br>ניקוד: ${this.score}<br>יירוטים: ${this.intercepts}/${this.targetIntercepts}`;
+    }
+
+    getVictoryMessage() {
+        return `הגנתם על ${this.getSelectedCityName()}!<br>ניקוד: ${this.score}<br>יירוטים מושלמים: ${this.intercepts}/${this.targetIntercepts}`;
     }
 
     setCitySelectorVisibility(isVisible) {
@@ -351,8 +478,10 @@ class IronDomeGame {
     }
 
     showMenuMessage() {
-        const title = 'Iron Dome<br><span style="font-size:0.55em;opacity:0.7;letter-spacing:2px;text-transform:uppercase;font-weight:700;">Defense</span>';
-        this.showMessage(title, this.getMenuInstructions(), '🎯 DEFEND NOW', { showCitySelector: true });
+        this.showMessage(this.getMenuTitle(), this.getMenuInstructions(), 'הגנו עכשיו', {
+            showCitySelector: true,
+            messageStyle: 'menu'
+        });
     }
 
     setSelectedCity(cityKey) {
@@ -363,6 +492,7 @@ class IronDomeGame {
             button.classList.toggle('selected', button.dataset.city === cityKey);
         });
         this.updateUI();
+        this.syncUIMode();
 
         if (this.gameState === 'menu') {
             this.showMenuMessage();
@@ -518,7 +648,7 @@ class IronDomeGame {
     
     hideLoadingScreen() {
         this.loadingScreen.classList.add('hidden');
-        this.gameState = 'menu';
+        this.setGameState('menu');
         this.setSelectedCity(this.selectedCity);
         
         // Show iOS home screen prompt if applicable
@@ -529,7 +659,7 @@ class IronDomeGame {
         if (this.isIOS && !this.isStandalone) {
             const prompt = document.createElement('div');
             prompt.className = 'ios-prompt';
-            prompt.innerHTML = '📲 For full screen: Add to Home Screen<br><small>Tap Share → Add to Home Screen</small>';
+            prompt.innerHTML = '📲 למסך מלא: הוסיפו למסך הבית<br><small>הקישו על שיתוף ואז על "הוספה למסך הבית"</small>';
             document.body.appendChild(prompt);
             
             // Auto-remove after 5 seconds
@@ -586,12 +716,12 @@ class IronDomeGame {
     
     loadImages() {
         const imagesToLoad = [
-            { name: 'israelRocket', src: 'photos/israel_rocket_clean.png' },
+            { name: 'israelRocket', src: 'photos/israel_rocket_game.png' },
             { name: 'ironDom', src: 'photos/iron_dom_clean.png' },
             { name: 'telAvivMap', src: 'photos/Tel_aviv.png' },
             { name: 'jerusalemMap', src: 'photos/jerusalem.png' },
             { name: 'haifaMap', src: 'photos/haifa.png' },
-            { name: 'iranRocket', src: 'photos/iran_rocket_clean.png' },
+            { name: 'iranRocket', src: 'photos/iran_rocket_game.png' },
             { name: 'trump', src: 'photos/Trump.png' },
             { name: 'npc1', src: 'photos/npc1.png' },
             { name: 'npc2', src: 'photos/npc2.png' }
@@ -634,7 +764,7 @@ class IronDomeGame {
         const progress = (this.loadedImages / this.totalImages) * 100;
         const loadingText = document.querySelector('.loading-content p');
         if (loadingText) {
-            loadingText.textContent = `Loading assets... ${Math.round(progress)}%`;
+            loadingText.textContent = this.getLoadingText(progress);
         }
     }
     
@@ -903,7 +1033,7 @@ class IronDomeGame {
             width: 30,
             height: 60
         });
-        
+
         // Launch sound
         this.playSound(800, 0.2, 'square');
     }
@@ -932,7 +1062,7 @@ class IronDomeGame {
             height: 60
         });
     }
-    
+
     updateGame(deltaTime) {
         const safeDelta = Number.isFinite(deltaTime)
             ? Math.max(0, Math.min(deltaTime, this.maxFrameDelta))
@@ -1459,10 +1589,13 @@ class IronDomeGame {
     }
 
     createScorePopup(x, y, points, isCombo = false) {
+        const comboText = isCombo ? `x${this.combo}!` : '';
         this.scorePopups.push({
             x: x,
             y: y,
-            text: isCombo ? `+${points} x${this.combo}!` : `+${points}`,
+            text: isCombo ? `+${points} ${comboText}` : `+${points}`,
+            pointsText: `+${points}`,
+            comboText,
             alpha: 1,
             life: 1,
             vy: -2,
@@ -1504,7 +1637,7 @@ class IronDomeGame {
         this.trumpAnimation.duration = 0;
         this.trumpAnimation.callback = callback;
         this.trumpAnimation.stars = []; // Clear any existing stars
-        this.gameState = 'trumpAnimation';
+        this.setGameState('trumpAnimation');
         
         // Play a funny sound effect
         this.playSound(220, 0.3, 'triangle');
@@ -1558,7 +1691,7 @@ class IronDomeGame {
         // End animation when Trump exits screen (removed time delay - immediate transition)
         if (this.trumpAnimation.x <= -this.trumpAnimation.width) {
             this.trumpAnimation.active = false;
-            this.gameState = 'victory'; // Set to victory state
+            this.setGameState('victory');
             if (this.trumpAnimation.callback) {
                 this.trumpAnimation.callback();
             }
@@ -1662,8 +1795,9 @@ class IronDomeGame {
         // Draw selected city map if loaded
         const mapImage = this.getCityBackgroundImage();
         if (this.imagesLoaded && this.isRenderableImage(mapImage)) {
-            this.ctx.globalAlpha = 0.62;
-            this.ctx.drawImage(mapImage, 0, 0, this.canvasWidth, this.canvasHeight);
+            const background = this.activeCityConfig?.background || {};
+            this.ctx.globalAlpha = background.mapAlpha ?? 0.68;
+            this.drawImageCover(mapImage, background.focusX ?? 0.5, background.focusY ?? 0.5);
             this.ctx.globalAlpha = 1;
         } else {
             // Draw stars as fallback
@@ -1679,6 +1813,8 @@ class IronDomeGame {
             // Draw city lights
             this.renderCityLights();
         }
+
+        this.renderBackgroundGrade();
 
         // Render parallax clouds
         this.renderClouds();
@@ -1829,33 +1965,45 @@ class IronDomeGame {
 
             const fontSize = Math.round(18 * popup.scale);
             this.ctx.font = `900 ${fontSize}px -apple-system, Arial, sans-serif`;
+            const drawPopupText = (text, x, y) => {
+                if (popup.scale > 1) {
+                    // Combo popup — layered glow + outline
+                    this.ctx.shadowColor = popup.color;
+                    this.ctx.shadowBlur = 18;
+                    this.ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+                    this.ctx.lineWidth = fontSize * 0.18;
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.strokeText(text, x, y);
+                    this.ctx.fillStyle = popup.color;
+                    this.ctx.fillText(text, x, y);
+                    this.ctx.shadowBlur = 0;
+                    this.ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                    this.ctx.fillText(text, x, y - fontSize * 0.04);
+                } else {
+                    this.ctx.shadowColor = popup.color;
+                    this.ctx.shadowBlur = 8;
+                    this.ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+                    this.ctx.lineWidth = fontSize * 0.14;
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.strokeText(text, x, y);
+                    this.ctx.fillStyle = popup.color;
+                    this.ctx.fillText(text, x, y);
+                }
+            };
 
-            if (popup.scale > 1) {
-                // Combo popup — layered glow + outline
-                this.ctx.shadowColor = popup.color;
-                this.ctx.shadowBlur = 18;
-                // Dark outline for readability
-                this.ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-                this.ctx.lineWidth = fontSize * 0.18;
-                this.ctx.lineJoin = 'round';
-                this.ctx.strokeText(popup.text, popup.x, popup.y);
-                // Bright fill
-                this.ctx.fillStyle = popup.color;
-                this.ctx.fillText(popup.text, popup.x, popup.y);
-                // Subtle inner highlight
-                this.ctx.shadowBlur = 0;
-                this.ctx.fillStyle = 'rgba(255,255,255,0.35)';
-                this.ctx.fillText(popup.text, popup.x, popup.y - fontSize * 0.04);
+            if (popup.scale > 1 && popup.comboText) {
+                const pointsWidth = this.ctx.measureText(popup.pointsText || '').width;
+                const comboWidth = this.ctx.measureText(popup.comboText).width;
+                const segmentGap = Math.max(fontSize * 0.3, popup.comboText.length > 4 ? fontSize * 0.42 : fontSize * 0.34);
+                const totalWidth = pointsWidth + segmentGap + comboWidth;
+                const leftEdge = popup.x - totalWidth / 2;
+                const pointsX = leftEdge + pointsWidth / 2;
+                const comboX = leftEdge + pointsWidth + segmentGap + comboWidth / 2;
+
+                drawPopupText(popup.pointsText, pointsX, popup.y);
+                drawPopupText(popup.comboText, comboX, popup.y);
             } else {
-                // Regular intercept popup
-                this.ctx.shadowColor = popup.color;
-                this.ctx.shadowBlur = 8;
-                this.ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-                this.ctx.lineWidth = fontSize * 0.14;
-                this.ctx.lineJoin = 'round';
-                this.ctx.strokeText(popup.text, popup.x, popup.y);
-                this.ctx.fillStyle = popup.color;
-                this.ctx.fillText(popup.text, popup.x, popup.y);
+                drawPopupText(popup.text, popup.x, popup.y);
             }
             this.ctx.restore();
         });
@@ -1874,9 +2022,22 @@ class IronDomeGame {
 
             const baseFontSize = Math.round(Math.min(this.canvasWidth * 0.1, 42) * this.comboDisplay.scale);
             const labelFontSize = Math.round(baseFontSize * 0.52);
+            const numText = `${this.combo}x`;
+            const labelText = 'COMBO!';
+
+            this.ctx.font = `900 ${baseFontSize}px -apple-system, Arial, sans-serif`;
+            const numWidth = this.ctx.measureText(numText).width;
+            this.ctx.font = `800 ${labelFontSize}px -apple-system, Arial, sans-serif`;
+            const labelWidth = this.ctx.measureText(labelText).width;
+
+            const segmentGap = this.combo >= 10
+                ? Math.max(baseFontSize * 0.8, numWidth * 0.26)
+                : Math.max(baseFontSize * 0.58, numWidth * 0.18);
+            const sidePadding = Math.max(baseFontSize * 0.62, 22);
+            const contentWidth = numWidth + segmentGap + labelWidth;
 
             // ── Background pill ──
-            const pillW = baseFontSize * 5.2;
+            const pillW = Math.max(baseFontSize * 5.2, contentWidth + sidePadding * 2);
             const pillH = baseFontSize * 1.55;
             const pillR = pillH / 2;
             const pillX = cx - pillW / 2;
@@ -1906,34 +2067,36 @@ class IronDomeGame {
             this.ctx.restore();
 
             // ── Multiplier number (left side) ──
+            const leftEdge = cx - contentWidth / 2;
+            const numX = leftEdge + numWidth / 2;
+            const labelX = leftEdge + numWidth + segmentGap + labelWidth / 2;
+
             this.ctx.save();
             this.ctx.globalAlpha = this.comboDisplay.alpha;
-            const numText = `${this.combo}x`;
             this.ctx.font = `900 ${baseFontSize}px -apple-system, Arial, sans-serif`;
 
             // Deep glow layers
             this.ctx.shadowColor = '#ff8800';
             this.ctx.shadowBlur = 28;
             this.ctx.fillStyle = '#ff8800';
-            this.ctx.fillText(numText, cx - baseFontSize * 1.05, cy);
+            this.ctx.fillText(numText, numX, cy);
             this.ctx.shadowBlur = 14;
             this.ctx.fillStyle = '#ffcc00';
-            this.ctx.fillText(numText, cx - baseFontSize * 1.05, cy);
+            this.ctx.fillText(numText, numX, cy);
             // Bright white core
             this.ctx.shadowBlur = 0;
             this.ctx.fillStyle = '#fff9e0';
-            this.ctx.fillText(numText, cx - baseFontSize * 1.05, cy - 1);
+            this.ctx.fillText(numText, numX, cy - 1);
             this.ctx.restore();
 
             // ── "COMBO!" label (right side) ──
             this.ctx.save();
             this.ctx.globalAlpha = this.comboDisplay.alpha;
             this.ctx.font = `800 ${labelFontSize}px -apple-system, Arial, sans-serif`;
-            this.ctx.letterSpacing = '2px';
             this.ctx.shadowColor = '#ffdd00';
             this.ctx.shadowBlur = 14;
             this.ctx.fillStyle = '#ffee55';
-            this.ctx.fillText('COMBO!', cx + baseFontSize * 0.72, cy);
+            this.ctx.fillText(labelText, labelX, cy);
             this.ctx.restore();
 
             this.ctx.restore();
@@ -1979,8 +2142,8 @@ class IronDomeGame {
                 this.ctx.save();
                 this.ctx.translate(missile.x, missile.y);
                 this.ctx.rotate(angle);
-                this.ctx.drawImage(iranRocketImage, 
-                    -missile.width / 2, -missile.height / 2, 
+                this.ctx.drawImage(iranRocketImage,
+                    -missile.width / 2, -missile.height / 2,
                     missile.width, missile.height);
                 this.ctx.restore();
             } else {
@@ -2264,7 +2427,7 @@ class IronDomeGame {
     startGame() {
         this.applyCityConfig(this.selectedCity);
         this.resetRuntimeState({ resetStats: true });
-        this.gameState = 'playing';
+        this.setGameState('playing');
         this.pauseBtn.textContent = '⏸️';
         this.gameMessage.classList.add('hidden');
         this.updateUI();
@@ -2279,12 +2442,15 @@ class IronDomeGame {
     
     togglePause() {
         if (this.gameState === 'playing') {
-            this.gameState = 'paused';
+            this.setGameState('paused');
             this.pauseBtn.textContent = '▶️';
-            this.showMessage('Game Paused', 'Tap Resume to continue', 'Resume', { showCitySelector: false });
+            this.showMessage('המשחק הושהה', 'הקישו על המשך כדי לחזור למשחק', 'המשך', {
+                showCitySelector: false,
+                messageStyle: 'status'
+            });
             this.showUI();
         } else if (this.gameState === 'paused') {
-            this.gameState = 'playing';
+            this.setGameState('playing');
             this.pauseBtn.textContent = '⏸️';
             this.gameMessage.classList.add('hidden');
             this.lastTime = performance.now();
@@ -2292,7 +2458,7 @@ class IronDomeGame {
     }
     
     restartGame() {
-        this.gameState = 'menu';
+        this.setGameState('menu');
         this.pauseBtn.textContent = '⏸️';
         this.resetRuntimeState({ resetStats: true });
         this.showMenuMessage();
@@ -2301,42 +2467,43 @@ class IronDomeGame {
     }
     
     gameOver() {
-        this.gameState = 'gameOver';
+        this.setGameState('gameOver');
         this.playSound(150, 1, 'sawtooth');
-        this.showMessage('💥 Game Over!', 
-            `${this.getSelectedCityName()} was overwhelmed.<br>Score: ${this.score}<br>Intercepts: ${this.intercepts}/${this.targetIntercepts}`, 
-            '🔄 Try Again',
-            { showCitySelector: true });
+        this.showMessage('💥 המשחק נגמר!',
+            this.getGameOverMessage(),
+            'נסו שוב',
+            { showCitySelector: true, messageStyle: 'status' });
         this.showUI();
     }
     
     victory() {
-        this.gameState = 'victory';
+        this.setGameState('victory');
         this.playSound(440, 0.5, 'sine');
         this.playSound(550, 0.5, 'sine');
-        this.showMessage('🎉 Victory!', 
-            `You defended ${this.getSelectedCityName()}!<br>Score: ${this.score}<br>Perfect intercepts: ${this.intercepts}/${this.targetIntercepts}`, 
-            '🎯 Play Again',
-            { showCitySelector: true });
+        this.showMessage('🎉 ניצחון!',
+            this.getVictoryMessage(),
+            'שחקו שוב',
+            { showCitySelector: true, messageStyle: 'status' });
         this.showUI();
     }
     
     showVictoryWithShare() {
-        this.gameState = 'victory';
+        this.setGameState('victory');
         this.playSound(440, 0.5, 'sine');
         this.playSound(550, 0.5, 'sine');
-        this.showMessageWithShare('🎉 Victory!', 
-            `You defended ${this.getSelectedCityName()}!<br>Score: ${this.score}<br>Perfect intercepts: ${this.intercepts}/${this.targetIntercepts}`, 
-            '🎯 Play Again',
-            { showCitySelector: true });
+        this.showMessageWithShare('🎉 ניצחון!',
+            this.getVictoryMessage(),
+            'שחקו שוב',
+            { showCitySelector: true, messageStyle: 'status' });
         this.showUI();
     }
-    
-    showMessage(title, message, buttonText = '🎯 TAP TO START', options = {}) {
-        const { showCitySelector = true } = options;
+
+    showMessage(title, message, buttonText = 'התחילו', options = {}) {
+        const { showCitySelector = true, messageStyle = 'status' } = options;
         this.gameMessage.classList.remove('hidden');
-        this.gameMessage.querySelector('h2').innerHTML = title;
-        this.gameMessage.querySelector('#gameInstructions').innerHTML = message;
+        this.gameMessage.dataset.messageStyle = messageStyle;
+        this.messageTitle.innerHTML = title;
+        this.messageBody.innerHTML = message;
         this.startBtn.textContent = buttonText;
         this.setCitySelectorVisibility(showCitySelector);
         
@@ -2347,11 +2514,12 @@ class IronDomeGame {
         }
     }
     
-    showMessageWithShare(title, message, buttonText = '🎯 TAP TO START', options = {}) {
-        const { showCitySelector = true } = options;
+    showMessageWithShare(title, message, buttonText = 'התחילו', options = {}) {
+        const { showCitySelector = true, messageStyle = 'status' } = options;
         this.gameMessage.classList.remove('hidden');
-        this.gameMessage.querySelector('h2').innerHTML = title;
-        this.gameMessage.querySelector('#gameInstructions').innerHTML = message;
+        this.gameMessage.dataset.messageStyle = messageStyle;
+        this.messageTitle.innerHTML = title;
+        this.messageBody.innerHTML = message;
         this.startBtn.textContent = buttonText;
         this.setCitySelectorVisibility(showCitySelector);
         
@@ -2364,7 +2532,7 @@ class IronDomeGame {
         // Add WhatsApp share button
         const shareBtn = document.createElement('button');
         shareBtn.className = 'share-button';
-        shareBtn.innerHTML = '📱 Share on WhatsApp';
+        shareBtn.textContent = 'שתפו ב-WhatsApp';
         shareBtn.onclick = () => this.shareToWhatsApp();
         
         // Insert share button before the play again button
@@ -2372,11 +2540,11 @@ class IronDomeGame {
     }
     
     shareToWhatsApp() {
-        const message = `🎮 I just won Iron Dome! 🚀\n` +
-                       `🎯 Score: ${this.score}\n` +
-                       `💥 Perfect Intercepts: ${this.intercepts}/${this.targetIntercepts}\n` +
-                       `🏆 Successfully defended ${this.getSelectedCityName()}!\n\n` +
-                       `Try to beat my score! 🔥\n` +
+        const message = `🎮 ניצחתי עכשיו בכיפת ברזל! 🚀\n` +
+                       `🎯 ניקוד: ${this.score}\n` +
+                       `💥 יירוטים מושלמים: ${this.intercepts}/${this.targetIntercepts}\n` +
+                       `🏆 הגנתי בהצלחה על ${this.getSelectedCityName()}!\n\n` +
+                       `נסו לעקוף את הניקוד שלי! 🔥\n` +
                        `Play here: https://aloniter.github.io/Iron_Dom_mobile/`;
         
         const encodedMessage = encodeURIComponent(message);

@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he">
 <head>
   <meta charset="UTF-8">
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Iron Dome">
+  <meta name="apple-mobile-web-app-title" content="כיפת ברזל">
   <meta name="theme-color" content="#0a0a2e">
-  <meta name="description" content="Iron Dome — Mobile Missile Defense Game. Protect cities by intercepting enemy missiles with touch controls.">
+  <meta name="description" content="כיפת ברזל — משחק הגנה מטילים למובייל. הגנו על ערים בעזרת יירוט טילים במסך מגע.">
 
   <!-- PWA manifest -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -41,60 +42,60 @@
   <meta name="msapplication-TileImage" content="photos/icon.png">
   <meta name="msapplication-TileColor" content="#0a0a2e">
 
-  <title>Iron Dome — Mobile Missile Defense</title>
+  <title>כיפת ברזל — משחק הגנה מטילים</title>
   <link rel="stylesheet" href="style.css">
 
   <!-- Critical asset preloads -->
   <link rel="preload" as="image" href="photos/Tel_aviv.png">
   <link rel="preload" as="image" href="photos/jerusalem.png">
   <link rel="preload" as="image" href="photos/haifa.png">
-  <link rel="preload" as="image" href="photos/iran_rocket_clean.png">
+  <link rel="preload" as="image" href="photos/iran_rocket_game.png">
   <link rel="preload" as="image" href="photos/iron_dom_clean.png">
-  <link rel="preload" as="image" href="photos/israel_rocket_clean.png">
+  <link rel="preload" as="image" href="photos/israel_rocket_game.png">
 </head>
 <body>
-  <div class="game-container">
+  <div class="game-container" data-ui-mode="loading" data-city="tel_aviv">
 
     <!-- ── UI Overlay ── -->
     <div class="ui-overlay">
 
       <!-- Score Panel (top-left) -->
       <div class="score-panel">
-        <div class="score">Score: <span id="score">0</span></div>
-        <div class="hits">Hits: <span id="hits">0</span>/<span id="maxHits">5</span></div>
-        <div class="intercepts">Intercepts: <span id="intercepts">0</span>/<span id="targetIntercepts">20</span></div>
+        <div class="score">ניקוד: <span id="score">0</span></div>
+        <div class="hits">פגיעות: <span id="hits">0</span>/<span id="maxHits">5</span></div>
+        <div class="intercepts">יירוטים: <span id="intercepts">0</span>/<span id="targetIntercepts">20</span></div>
       </div>
 
       <!-- Game Message Modal (center) -->
-      <div class="game-message" id="gameMessage">
-        <h2>Iron Dome<br><span style="font-size:0.55em;opacity:0.7;letter-spacing:2px;text-transform:uppercase;">Defense</span></h2>
+      <div class="game-message" id="gameMessage" data-message-style="menu">
+        <h2>כיפת ברזל<br><span class="game-title-subtitle">הגנה</span></h2>
 
         <p id="gameInstructions">
-          Choose a city map and defend it from incoming missiles.<br>
-          <strong>Current city:</strong> Tel Aviv<br>
-          Tap anywhere to launch interceptor missiles.
+          בחרו מפת עיר והגנו עליה מפני טילים נכנסים.<br>
+          <strong>העיר הנוכחית:</strong> תל אביב<br>
+          הקישו בכל מקום כדי לשגר טילי יירוט.
         </p>
 
         <!-- City Selector -->
         <div id="citySelector" class="city-selector">
-          <p class="city-selector-label">Choose city map to defend</p>
-          <div class="city-options" role="group" aria-label="Choose city map">
-            <button type="button" class="city-option-btn selected" data-city="tel_aviv">Tel Aviv</button>
-            <button type="button" class="city-option-btn" data-city="jerusalem">Jerusalem</button>
-            <button type="button" class="city-option-btn" data-city="haifa">Haifa</button>
+          <p class="city-selector-label">בחרו עיר להגנה</p>
+          <div class="city-options" role="group" aria-label="בחירת עיר להגנה">
+            <button type="button" class="city-option-btn selected" data-city="tel_aviv">תל אביב</button>
+            <button type="button" class="city-option-btn" data-city="jerusalem">ירושלים</button>
+            <button type="button" class="city-option-btn" data-city="haifa">חיפה</button>
           </div>
         </div>
 
         <!-- Start / Action Button -->
-        <button id="startBtn" class="start-button">🎯 DEFEND NOW</button>
+        <button id="startBtn" class="start-button">הגנו עכשיו</button>
 
-        <div class="credits">Created by Alon Iter</div>
+        <div class="credits">נוצר על ידי Alon Iter</div>
       </div>
 
       <!-- Controls (top-right) -->
       <div class="controls">
-        <button id="pauseBtn"   class="control-btn" aria-label="Pause">⏸️</button>
-        <button id="restartBtn" class="control-btn" aria-label="Restart">🔄</button>
+        <button id="pauseBtn"   class="control-btn" aria-label="השהה">⏸️</button>
+        <button id="restartBtn" class="control-btn" aria-label="התחל מחדש">🔄</button>
       </div>
 
       <!-- Touch Feedback Ring -->
@@ -102,19 +103,19 @@
     </div><!-- /.ui-overlay -->
 
     <!-- Game Canvas -->
-    <canvas id="gameCanvas" aria-label="Iron Dome game canvas"></canvas>
+    <canvas id="gameCanvas" aria-label="משטח המשחק של כיפת ברזל"></canvas>
 
     <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
       <div class="loading-content">
-        <h2>🚀 Iron Dome</h2>
+        <h2>🚀 כיפת ברזל</h2>
         <div class="loading-spinner"></div>
-        <p>Loading assets…</p>
+        <p>טוען את קובצי המשחק...</p>
       </div>
     </div>
 
     <!-- Offline Banner -->
-    <div id="offlineBanner" class="offline-banner" hidden>You're offline — playing from cache.</div>
+    <div id="offlineBanner" class="offline-banner" hidden>אין חיבור לאינטרנט — המשחק פועל מהמטמון.</div>
 
   </div><!-- /.game-container -->
 

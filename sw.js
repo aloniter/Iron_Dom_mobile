@@ -1,6 +1,6 @@
 /* sw.js — Iron Dome PWA offline cache */
 
-const VERSION = 'v1.3.0-' + (self.registration?.scope || 'local');
+const VERSION = 'v1.4.4-' + (self.registration?.scope || 'local');
 const APP_CACHE = `iron-dome-app-${VERSION}`;
 const RUNTIME_CACHE = `iron-dome-runtime-${VERSION}`;
 
@@ -21,9 +21,9 @@ const STATIC_ASSETS = [
   './photos/Tel_aviv.png',
   './photos/jerusalem.png',
   './photos/haifa.png',
-  './photos/iran_rocket_clean.png',
+  './photos/iran_rocket_game.png',
   './photos/iron_dom_clean.png',
-  './photos/israel_rocket_clean.png',
+  './photos/israel_rocket_game.png',
   './photos/Trump.png',
   './photos/npc1.png',
   './photos/npc2.png',

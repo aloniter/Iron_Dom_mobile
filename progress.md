@@ -29,3 +29,41 @@ Original prompt: this is a game of the iron dom of israel defce the iran attack,
 - 2026-03-20:
   - Verified the tracked `photos/*.png` assets are already present on `origin/main`; no new image files were missing from Git.
   - Ran the Playwright smoke client against `http://127.0.0.1:8000` and confirmed the latest gameplay capture renders the city map and missile sprites without runtime failures.
+  - Implemented the mobile-first cinematic UI pass:
+    - Added a root `data-ui-mode` hook and state syncing so menu, paused, playing, and result screens can style HUD visibility cleanly.
+    - Reworked the menu/result card into a lighter responsive presentation panel with bottom-anchored portrait layout and compact landscape layout.
+    - Reduced HUD/control visual weight and hid HUD chrome during menu/result states.
+  - Replaced stretched city-map rendering with aspect-preserving cover framing plus per-city focus points and readability grading overlays.
+  - Adapted missile asset loading to the current worktree by switching to `iran_rocket.png` / `israel_rocket.png` and using lightweight white-background cleanup instead of the old clean-file dependency.
+  - Verified locally via Playwright at:
+    - desktop `1366x768`
+    - mobile portrait `390x844`
+    - mobile landscape `844x390`
+  - Confirmed:
+    - menu CTA remains visible without scroll in portrait
+    - landscape menu no longer clips
+    - Tel Aviv / Jerusalem / Haifa framing remains readable
+    - gameplay smoke run completes and sprite backgrounds stay transparent in motion
+  - Adjusted the portrait menu upward after iPhone feedback so the pre-play card sits higher on screen instead of hugging the bottom.
+  - Re-verified that the current project uses `photos/iran_rocket.png` and `photos/israel_rocket.png` for gameplay/preload/SW cache, matching the updated missile files in the worktree.
+  - Translated the startup UI to Hebrew:
+    - main menu title, instructions, city selector, CTA, credits, and city labels
+    - loading screen, offline banner, score labels, result/pause dialogs, WhatsApp share CTA, and the iOS install prompt
+  - Verified with:
+    - `node "$WEB_GAME_CLIENT" --url http://127.0.0.1:8123 --actions-json '{"steps":[{"buttons":[],"frames":2}]}' --iterations 1 --pause-ms 250 --screenshot-dir output/web-game-hebrew-menu`
+    - a mobile Playwright screenshot at `output/hebrew-menu-full.png`, confirming the visible menu and install prompt render in Hebrew
+  - Updated missile assets for iPhone testing:
+    - generated single-sprite transparent gameplay assets at `photos/iran_rocket_game.png` and `photos/israel_rocket_game.png`
+    - pointed preload/runtime/SW paths to the processed missile assets and bumped the SW cache version to `v1.4.2`
+  - Verified with:
+    - `output/web-game-iran-rocket-final/shot-0.png`, confirming the new Iranian rocket renders in gameplay without the sheet/checkerboard artifact
+    - `output/interceptor-check.png`, confirming the interceptor sprite still launches/render correctly after the asset path cleanup
+  - Refreshed `photos/israel_rocket_game.png` from the latest `photos/israel_rocket.png` sprite sheet and bumped the SW cache version to `v1.4.3` so iPhone cache-first loads pick up the new interceptor art.
+  - Re-verified with `output/israel-rocket-verify.png`, confirming the updated Israel interceptor sprite renders on launch in gameplay.
+  - Fixed combo UI spacing for double-digit streaks:
+    - combo banner now measures the real width of `12x`, `15x`, etc. and computes pill width / label offset dynamically
+    - combo score popups now render points and multiplier as separate measured segments instead of a cramped single string
+    - bumped the SW cache version to `v1.4.4` so the updated combo UI JS reaches iPhone cache-first installs
+  - Verified with:
+    - `output/combo-ui-12x-fixed.png`, confirming the `12x COMBO!` banner and `+500 x12!` popup both have visible gap on mobile
+    - `node "$WEB_GAME_CLIENT" --url http://127.0.0.1:8123 --click-selector '#startBtn' --actions-json '{"steps":[{"buttons":[],"frames":90}]}' --iterations 1 --pause-ms 250 --screenshot-dir output/web-game-combo-ui-smoke`
