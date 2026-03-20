@@ -11,7 +11,7 @@ const defaultConfig = {
     },
     launcher: {
         xOffset: 0,
-        yOffset: 0,
+        yOffset: 24,
         scaleMin: 74,
         scaleFactor: 0.11,
         scaleMaxMobile: 92,
@@ -23,7 +23,7 @@ const defaultConfig = {
     people: {
         width: 30,
         height: 40,
-        yOffset: 0,
+        yOffset: 25,
         speedMin: 20,
         speedMax: 50,
         visible: true
@@ -50,7 +50,7 @@ const defaultConfig = {
         shockwaveMaxRadius: 80,
         shockwaveSpeed: 150,
         spriteExplosionRadius: 18,
-        spriteExplosionDuration: 300,
+        spriteExplosionDuration: 500,
         screenShakeIntensity: 1.0,
         explosionsVisible: true,
         shockwavesVisible: true,
@@ -65,7 +65,7 @@ const defaultConfig = {
     },
     hud: {
         score: { xOffset: 0, yOffset: 0, scale: 1.0, visible: true },
-        combo: { xOffset: 0, yOffset: 0, scale: 1.0, visible: true }
+        combo: { xOffset: 0, yOffset: 0, scale: 1.0, visible: false }
     },
     debug: {
         showBaseline: false,
