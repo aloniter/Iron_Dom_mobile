@@ -721,15 +721,14 @@ class IronDomeGame {
     loadImages() {
         const imagesToLoad = [
             { name: 'israelRocket', src: 'photos/israel_rocket_game.png' },
-            { name: 'ironDom', src: 'photos/iron_dom_clean.png' },
+            { name: 'ironDom', src: 'photos/iron_dom.png?v=20260320-1' },
             { name: 'telAvivMap', src: 'photos/Tel_aviv.png' },
             { name: 'jerusalemMap', src: 'photos/jerusalem.png' },
             { name: 'haifaMap', src: 'photos/haifa.png' },
             { name: 'iranRocket', src: 'photos/iran_rocket_game.png' },
             { name: 'trump', src: 'photos/Trump.png' },
             { name: 'npc1', src: 'photos/npc1.png' },
-            { name: 'npc2', src: 'photos/npc2.png' },
-            { name: 'explosionSheet', src: 'photos/explosion.png' }
+            { name: 'npc2', src: 'photos/npc2.png' }
         ];
         
         this.totalImages = imagesToLoad.length;
@@ -1132,6 +1131,7 @@ class IronDomeGame {
 
         // Update explosions
         this.updateExplosions(safeDelta);
+        this.updateSpriteExplosions(safeDelta);
 
         // Update visual effects
         this.updateSmokeParticles(safeDelta);
@@ -1430,7 +1430,48 @@ class IronDomeGame {
             this.explosions.splice(0, this.explosions.length - 8);
         }
     }
-    
+
+    updateSpriteExplosions(deltaTime) {
+        for (let i = this.spriteExplosions.length - 1; i >= 0; i--) {
+            const s = this.spriteExplosions[i];
+            s.elapsed += deltaTime;
+
+            // Clear the one-frame white flash after first update tick
+            if (s.flashFrame && s.elapsed > 0) {
+                s.flashFrame = false;
+            }
+
+            if (s.phase === 'small') {
+                const t = Math.min(s.elapsed / 60, 1);
+                s.scale = 0.6 + t * 0.3; // 0.6 → 0.9
+                s.alpha = 1;
+                if (s.elapsed >= 60) {
+                    s.phase = 'large';
+                    s.elapsed = 0;
+                }
+            } else if (s.phase === 'large') {
+                const t = Math.min(s.elapsed / 80, 1);
+                s.scale = 0.9 + t * 0.3; // 0.9 → 1.2
+                s.alpha = 1;
+                if (s.elapsed >= 80) {
+                    s.phase = 'fade';
+                    s.elapsed = 0;
+                }
+            } else if (s.phase === 'fade') {
+                const t = Math.min(s.elapsed / 140, 1);
+                s.scale = 1.2 - t * 0.2; // 1.2 → 1.0
+                s.alpha = 1 - t;           // 1.0 → 0.0
+                if (s.elapsed >= 140) {
+                    // Recycle to pool
+                    this.spriteExplosions.splice(i, 1);
+                    if (this.spriteExplosionPool.length < 8) {
+                        this.spriteExplosionPool.push(s);
+                    }
+                }
+            }
+        }
+    }
+
     checkCollisions() {
         // Check collisions between interceptors and enemy missiles
         for (let i = this.enemyMissiles.length - 1; i >= 0; i--) {
