@@ -156,7 +156,7 @@ class IronDomeGame {
                 skyColors: {
                     top: { r: 8, g: 18, b: 50 },
                     mid: { r: 20, g: 47, b: 91 },
-                    bottom: { r: 10, g: 22, b: 40 }
+                    bottom: { r: 22, g: 81, b: 128 }
                 },
                 skyline: {
                     numBuildings: 14,
@@ -189,7 +189,7 @@ class IronDomeGame {
                 skyColors: {
                     top: { r: 22, g: 15, b: 42 },
                     mid: { r: 58, g: 37, b: 66 },
-                    bottom: { r: 30, g: 22, b: 18 }
+                    bottom: { r: 98, g: 71, b: 55 }
                 },
                 skyline: {
                     numBuildings: 11,
@@ -222,7 +222,7 @@ class IronDomeGame {
                 skyColors: {
                     top: { r: 9, g: 26, b: 58 },
                     mid: { r: 24, g: 65, b: 103 },
-                    bottom: { r: 12, g: 28, b: 44 }
+                    bottom: { r: 30, g: 92, b: 126 }
                 },
                 skyline: {
                     numBuildings: 13,
@@ -416,12 +416,12 @@ class IronDomeGame {
         this.ctx.fillStyle = atmosphere;
         this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
 
-        const lowerThird = this.ctx.createLinearGradient(0, this.canvasHeight * 0.55, 0, this.canvasHeight);
+        const lowerThird = this.ctx.createLinearGradient(0, this.canvasHeight * 0.48, 0, this.canvasHeight);
         lowerThird.addColorStop(0, 'rgba(4, 10, 24, 0)');
-        lowerThird.addColorStop(0.5, `rgba(5, 12, 26, ${bottomAlpha * 0.65})`);
-        lowerThird.addColorStop(1, `rgba(3, 8, 18, ${Math.min(bottomAlpha * 1.3, 0.92)})`);
+        lowerThird.addColorStop(0.55, `rgba(5, 12, 26, ${bottomAlpha * 0.58})`);
+        lowerThird.addColorStop(1, `rgba(4, 10, 24, ${bottomAlpha})`);
         this.ctx.fillStyle = lowerThird;
-        this.ctx.fillRect(0, this.canvasHeight * 0.55, this.canvasWidth, this.canvasHeight * 0.45);
+        this.ctx.fillRect(0, this.canvasHeight * 0.48, this.canvasWidth, this.canvasHeight * 0.52);
 
         const vignette = this.ctx.createRadialGradient(
             this.canvasWidth / 2,
@@ -438,18 +438,14 @@ class IronDomeGame {
         this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
 
-    getGroundBaseY() {
-        return this.canvasHeight - 25;
-    }
-
     getGroundY() {
-        return this.getGroundBaseY();
+        return this.canvasHeight - 80;
     }
 
     getLauncherPosition() {
         return {
             x: this.canvasWidth / 2,
-            y: this.getGroundBaseY() - 80
+            y: this.canvasHeight - 100
         };
     }
 
@@ -635,7 +631,7 @@ class IronDomeGame {
                 id: i,
                 type: Math.random() > 0.5 ? 'npc1' : 'npc2',
                 x: Math.random() * this.canvasWidth,
-                y: this.getGroundBaseY() - 40, // Ground level - feet on ground baseline
+                y: this.canvasHeight - 40, // Ground level
                 width: 30,
                 height: 40,
                 speed: 20 + Math.random() * 30, // 20-50 pixels per second
