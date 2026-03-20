@@ -1380,6 +1380,7 @@ class IronDomeGame {
             vx: (dx / distance) * speed,
             vy: (dy / distance) * speed,
             trail: [],
+            davidStars: [],
             angle: Math.atan2(dy, dx) + Math.PI / 2,
             width: this._cfg('interceptor.width', 30),
             height: this._cfg('interceptor.height', 60)
@@ -1599,6 +1600,26 @@ class IronDomeGame {
             // Create smoke trail (less frequent on mobile)
             if (Math.random() < (this.isMobile ? 0.3 : 0.6)) {
                 this.createSmokeTrail(interceptor.x, interceptor.y, interceptor.vx, interceptor.vy, 'rgba(100, 200, 100, 0.5)');
+            }
+
+            // Spawn Star of David trail particles
+            if (this._cfg('interceptor.davidStarsVisible', true)) {
+                const spawnChance = this.isMobile ? 0.6 : 0.85;
+                if (Math.random() < spawnChance) {
+                    interceptor.davidStars.push({
+                        x: interceptor.x + (Math.random() - 0.5) * 8,
+                        y: interceptor.y + (Math.random() - 0.5) * 8,
+                        size: Math.random() * 3 + this._cfg('interceptor.davidStarSize', 5),
+                        life: 1.0,
+                        rotation: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+            // Age David star particles
+            const fadeDuration = this._cfg('interceptor.davidStarFade', 700);
+            for (let j = interceptor.davidStars.length - 1; j >= 0; j--) {
+                interceptor.davidStars[j].life -= deltaTime / fadeDuration;
+                if (interceptor.davidStars[j].life <= 0) interceptor.davidStars.splice(j, 1);
             }
 
             // Update position
@@ -2632,8 +2653,48 @@ class IronDomeGame {
     renderInterceptors() {
         if (!this._cfg('interceptor.visible', true)) return;
         this.interceptors.forEach(interceptor => {
+            // Draw Star of David trail particles (behind everything)
+            if (this._cfg('interceptor.davidStarsVisible', true) && interceptor.davidStars.length > 0) {
+                const r = this._cfg('interceptor.davidStarSize', 5);
+                interceptor.davidStars.forEach(star => {
+                    this.ctx.save();
+                    this.ctx.translate(star.x, star.y);
+                    this.ctx.rotate(star.rotation);
+                    this.ctx.globalAlpha = star.life * 0.9;
+
+                    this.ctx.fillStyle = '#0038b8';
+                    this.ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                    this.ctx.lineWidth = 0.8;
+
+                    const sz = star.size;
+                    // Triangle pointing up
+                    this.ctx.beginPath();
+                    for (let i = 0; i < 3; i++) {
+                        const a = (i * 2 * Math.PI / 3) - Math.PI / 2;
+                        i === 0 ? this.ctx.moveTo(sz * Math.cos(a), sz * Math.sin(a))
+                                : this.ctx.lineTo(sz * Math.cos(a), sz * Math.sin(a));
+                    }
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.stroke();
+
+                    // Triangle pointing down
+                    this.ctx.beginPath();
+                    for (let i = 0; i < 3; i++) {
+                        const a = (i * 2 * Math.PI / 3) + Math.PI / 2;
+                        i === 0 ? this.ctx.moveTo(sz * Math.cos(a), sz * Math.sin(a))
+                                : this.ctx.lineTo(sz * Math.cos(a), sz * Math.sin(a));
+                    }
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.stroke();
+
+                    this.ctx.restore();
+                });
+            }
+
             // Draw trail
-            if (this._cfg('interceptor.trailVisible', true) && interceptor.trail.length > 1) {
+            if (this._cfg('interceptor.trailVisible', false) && interceptor.trail.length > 1) {
                 this.ctx.strokeStyle = 'rgba(68, 255, 68, 0.8)';
                 this.ctx.lineWidth = 3;
                 this.ctx.beginPath();

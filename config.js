@@ -43,6 +43,9 @@ const defaultConfig = {
         launchOffsetX: 0,
         launchOffsetY: 0,
         trailVisible: true,
+        davidStarsVisible: true,
+        davidStarSize: 5,
+        davidStarFade: 700,
         visible: true
     },
     effects: {
